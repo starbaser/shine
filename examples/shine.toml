@@ -1,0 +1,30 @@
+# Shine Configuration
+# This is an example configuration file for the Shine desktop shell toolkit
+# Copy to ~/.config/shine/shine.toml to use
+
+[chat]
+# Enable/disable chat panel
+enabled = true
+
+# Edge placement: top, bottom, left, right, center, center-sized, background
+edge = "bottom"
+
+# Height in terminal lines (or use lines_pixels for pixel height)
+lines = 10
+
+# Margins in pixels
+margin_left = 10
+margin_right = 10
+margin_bottom = 10
+
+# Only allow one instance of this panel
+single_instance = true
+
+# Hide panel when it loses focus
+hide_on_focus_loss = true
+
+# Focus policy: not-allowed, exclusive, on-demand
+focus_policy = "on-demand"
+
+# Target monitor name (empty = primary monitor)
+# output_name = "DP-1"
