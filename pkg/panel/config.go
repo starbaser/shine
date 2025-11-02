@@ -184,6 +184,9 @@ type Config struct {
 
 	// Remote control
 	ListenSocket string // Unix socket path
+
+	// Window identification for multi-window single instance
+	WindowTitle string // Window title for targeting specific windows
 }
 
 // NewConfig creates a default panel configuration
@@ -226,6 +229,76 @@ func getMonitorResolution(monitorName string) (width, height int, err error) {
 	}
 
 	return 0, 0, fmt.Errorf("monitor %s not found", monitorName)
+}
+
+// ToRemoteControlArgs converts Config to kitty @ launch arguments
+func (c *Config) ToRemoteControlArgs(componentPath string) []string {
+	args := []string{
+		"@",
+		"launch",
+		"--type=os-panel",
+	}
+
+	// Panel properties via --os-panel
+	panelProps := []string{}
+
+	// Edge
+	edgeStr := c.Edge.String()
+	if edgeStr != "" {
+		panelProps = append(panelProps, fmt.Sprintf("edge=%s", edgeStr))
+	}
+
+	// Size (prefer pixels, fall back to cells)
+	if c.LinesPixels > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("lines=%dpx", c.LinesPixels))
+	} else if c.Lines > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("lines=%d", c.Lines))
+	}
+
+	if c.ColumnsPixels > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("columns=%dpx", c.ColumnsPixels))
+	} else if c.Columns > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("columns=%d", c.Columns))
+	}
+
+	// Margins
+	if c.MarginTop > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("margin-top=%d", c.MarginTop))
+	}
+	if c.MarginLeft > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("margin-left=%d", c.MarginLeft))
+	}
+	if c.MarginBottom > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("margin-bottom=%d", c.MarginBottom))
+	}
+	if c.MarginRight > 0 {
+		panelProps = append(panelProps, fmt.Sprintf("margin-right=%d", c.MarginRight))
+	}
+
+	// Focus policy
+	if c.FocusPolicy != FocusNotAllowed {
+		panelProps = append(panelProps, fmt.Sprintf("focus-policy=%s", c.FocusPolicy.String()))
+	}
+
+	// Output name
+	if c.OutputName != "" {
+		panelProps = append(panelProps, fmt.Sprintf("output-name=%s", c.OutputName))
+	}
+
+	// Add each panel property with its own --os-panel flag
+	for _, prop := range panelProps {
+		args = append(args, "--os-panel", prop)
+	}
+
+	// Window title (for tracking/control)
+	if c.WindowTitle != "" {
+		args = append(args, "--title", c.WindowTitle)
+	}
+
+	// Component path
+	args = append(args, componentPath)
+
+	return args
 }
 
 // ToKittenArgs converts Config to kitten panel CLI arguments
@@ -331,6 +404,7 @@ func (c *Config) ToKittenArgs(component string) []string {
 	}
 	if c.SingleInstance {
 		args = append(args, "--single-instance")
+		args = append(args, "--instance-group=shine")
 	}
 	if c.ToggleVisibility {
 		args = append(args, "--toggle-visibility")
