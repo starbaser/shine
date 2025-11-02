@@ -1,0 +1,36 @@
+version: "2"
+
+run:
+  skip-dirs:
+    - docs
+  timeout: 5m
+
+linters:
+  enable:
+    # Default linters (always enabled)
+    - errcheck      # Unchecked errors
+    - govet         # Suspicious constructs
+    - ineffassign   # Unused assignments
+    - staticcheck   # Advanced static analysis
+    - unused        # Unused code
+
+    # Additional recommended linters
+    - revive        # Fast, extensible linter (golint replacement)
+    - gosec         # Security issues
+    - misspell      # Spelling mistakes
+    - unconvert     # Unnecessary type conversions
+    - gocritic      # Comprehensive checks
+    - bodyclose     # HTTP response body closure
+    - nilerr        # Returns nil even when error is not nil
+    - predeclared   # Shadows predeclared identifiers
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    enable-all: true
+
+  revive:
+    confidence: 0.8

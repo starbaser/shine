@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  nixpkgs:
+    url: github:NixOS/nixpkgs/nixpkgs-unstable
+  gomod:
+    url: github:nix-community/gomod2nix
+    overlays:
+      - default
