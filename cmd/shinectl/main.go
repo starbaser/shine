@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/starbased-co/shine/pkg/panel"
 )
@@ -26,8 +28,23 @@ func usage() {
 	fmt.Println("  shinectl toggle bar")
 }
 
-func getSocketPath(panelName string) string {
-	return fmt.Sprintf("/tmp/shine-%s.sock", panelName)
+func getSocketPath(panelName string) (string, error) {
+	// Kitty appends the PID to socket paths when using panels
+	// Find the actual socket by looking for the pattern: /tmp/shine-{name}.sock-PID
+
+	// First, try to find the process
+	cmd := exec.Command("pgrep", "-f", fmt.Sprintf("shine-%s", panelName))
+	output, err := cmd.Output()
+	if err != nil {
+		// Process not found, return the base path and let the error happen
+		return fmt.Sprintf("/tmp/shine-%s.sock", panelName), fmt.Errorf("panel %s not running (process not found)", panelName)
+	}
+
+	// Get the PID (first line of output)
+	pidStr := strings.TrimSpace(strings.Split(string(output), "\n")[0])
+
+	// Construct the actual socket path with PID
+	return fmt.Sprintf("/tmp/shine-%s.sock-%s", panelName, pidStr), nil
 }
 
 func main() {
@@ -40,7 +57,11 @@ func main() {
 	panelName := os.Args[2]
 
 	// Get socket path for panel
-	socketPath := getSocketPath(panelName)
+	socketPath, pathErr := getSocketPath(panelName)
+	if pathErr != nil {
+		fmt.Printf("Warning: %v\n", pathErr)
+		fmt.Printf("Attempting to use socket path: %s\n", socketPath)
+	}
 
 	// Create remote control client
 	rc := panel.NewRemoteControl(socketPath)

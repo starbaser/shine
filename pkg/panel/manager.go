@@ -49,9 +49,12 @@ func (m *Manager) Launch(name string, config *Config, component string) (*Instan
 	}
 
 	// Create remote control client
+	// NOTE: Kitty appends the PID to the socket path when using panels
+	// So /tmp/shine-chat.sock becomes /tmp/shine-chat.sock-PID
 	var remote *RemoteControl
 	if config.ListenSocket != "" {
-		remote = NewRemoteControl(config.ListenSocket)
+		actualSocketPath := fmt.Sprintf("%s-%d", config.ListenSocket, cmd.Process.Pid)
+		remote = NewRemoteControl(actualSocketPath)
 	}
 
 	// Create instance
