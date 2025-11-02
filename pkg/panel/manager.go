@@ -1,6 +1,7 @@
 package panel
 
 import (
+	"bufio"
 	"fmt"
 	"os/exec"
 	"sync"
@@ -43,10 +44,24 @@ func (m *Manager) Launch(name string, config *Config, component string) (*Instan
 	// Create command
 	cmd := exec.Command("kitten", args...)
 
+	// Capture stderr for debugging
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr pipe for panel %s: %w", name, err)
+	}
+
 	// Start process
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start panel %s: %w", name, err)
 	}
+
+	// Read stderr in background (for debugging)
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			fmt.Printf("[%s stderr] %s\n", name, scanner.Text())
+		}
+	}()
 
 	// Create remote control client
 	// NOTE: Kitty appends the PID to the socket path when using panels

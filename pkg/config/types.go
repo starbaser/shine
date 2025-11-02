@@ -144,7 +144,7 @@ func NewDefaultConfig() *Config {
 			MarginLeft:      10,
 			MarginRight:     10,
 			MarginBottom:    10,
-			SingleInstance:  true,
+			SingleInstance:  false, // Disabled to allow independent remote control
 			HideOnFocusLoss: true,
 			FocusPolicy:     "on-demand",
 		},
