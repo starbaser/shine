@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+	// Set window title using ANSI escape sequence
+	fmt.Print("\033]0;shine-bar\007")
+
 	// Note: Don't use tea.WithAltScreen() for thin status bars
 	// Alt screen mode is for full-screen TUIs, causes rendering issues in panels
 	p := tea.NewProgram(initialModel())

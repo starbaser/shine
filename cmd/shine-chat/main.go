@@ -17,6 +17,12 @@ import (
 const gap = "\n\n"
 
 func main() {
+	// Set window title using ANSI escape sequence
+	// Format: ESC ] 0 ; title BEL
+	// \033]0; is ESC ] 0 ;
+	// \007 is BEL (bell character)
+	fmt.Print("\033]0;shine-chat\007")
+
 	p := tea.NewProgram(initialModel())
 
 	if _, err := p.Run(); err != nil {

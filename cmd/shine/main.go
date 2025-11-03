@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/starbased-co/shine/pkg/config"
 	"github.com/starbased-co/shine/pkg/panel"
@@ -64,10 +65,20 @@ func main() {
 			log.Fatalf("Failed to launch chat panel: %v", err)
 		}
 
-		fmt.Printf("  ✓ Chat panel launched (PID: %d)\n", instance.Command.Process.Pid)
+		if instance.WindowID != "" {
+			fmt.Printf("  ✓ Chat panel launched (Window ID: %s)\n", instance.WindowID)
+		} else if instance.Command != nil && instance.Command.Process != nil {
+			fmt.Printf("  ✓ Chat panel launched (PID: %d)\n", instance.Command.Process.Pid)
+		} else {
+			fmt.Printf("  ✓ Chat panel launched\n")
+		}
 		if panelCfg.ListenSocket != "" {
 			fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
 		}
+
+		// Wait for the first instance to fully start before launching the second
+		// This ensures single-instance mode can detect the existing instance
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	if cfg.Bar != nil && cfg.Bar.Enabled {
@@ -85,7 +96,71 @@ func main() {
 			log.Fatalf("Failed to launch status bar: %v", err)
 		}
 
-		fmt.Printf("  ✓ Status bar launched (PID: %d)\n", instance.Command.Process.Pid)
+		if instance.WindowID != "" {
+			fmt.Printf("  ✓ Status bar launched (Window ID: %s)\n", instance.WindowID)
+		} else if instance.Command != nil && instance.Command.Process != nil {
+			fmt.Printf("  ✓ Status bar launched (PID: %d)\n", instance.Command.Process.Pid)
+		} else {
+			fmt.Printf("  ✓ Status bar launched\n")
+		}
+		if panelCfg.ListenSocket != "" {
+			fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	if cfg.Clock != nil && cfg.Clock.Enabled {
+		fmt.Println("Launching clock...")
+		panelCfg := cfg.Clock.ToPanelConfig()
+
+		// Find the shine-clock binary
+		clockBinary, err := findComponentBinary("shine-clock")
+		if err != nil {
+			log.Fatalf("Failed to find shine-clock binary: %v", err)
+		}
+
+		instance, err := mgr.Launch("clock", panelCfg, clockBinary)
+		if err != nil {
+			log.Fatalf("Failed to launch clock: %v", err)
+		}
+
+		if instance.WindowID != "" {
+			fmt.Printf("  ✓ Clock launched (Window ID: %s)\n", instance.WindowID)
+		} else if instance.Command != nil && instance.Command.Process != nil {
+			fmt.Printf("  ✓ Clock launched (PID: %d)\n", instance.Command.Process.Pid)
+		} else {
+			fmt.Printf("  ✓ Clock launched\n")
+		}
+		if panelCfg.ListenSocket != "" {
+			fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	if cfg.SysInfo != nil && cfg.SysInfo.Enabled {
+		fmt.Println("Launching system info...")
+		panelCfg := cfg.SysInfo.ToPanelConfig()
+
+		// Find the shine-sysinfo binary
+		sysinfoBinary, err := findComponentBinary("shine-sysinfo")
+		if err != nil {
+			log.Fatalf("Failed to find shine-sysinfo binary: %v", err)
+		}
+
+		instance, err := mgr.Launch("sysinfo", panelCfg, sysinfoBinary)
+		if err != nil {
+			log.Fatalf("Failed to launch system info: %v", err)
+		}
+
+		if instance.WindowID != "" {
+			fmt.Printf("  ✓ System info launched (Window ID: %s)\n", instance.WindowID)
+		} else if instance.Command != nil && instance.Command.Process != nil {
+			fmt.Printf("  ✓ System info launched (PID: %d)\n", instance.Command.Process.Pid)
+		} else {
+			fmt.Printf("  ✓ System info launched\n")
+		}
 		if panelCfg.ListenSocket != "" {
 			fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
 		}
