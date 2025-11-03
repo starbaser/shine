@@ -49,6 +49,130 @@ func LoadOrDefault(path string) *Config {
 	if err != nil {
 		return NewDefaultConfig()
 	}
+
+	// Ensure core config has defaults if not specified
+	if cfg.Core == nil {
+		cfg.Core = &CoreConfig{
+			PrismDirs: []string{
+				"/usr/lib/shine/prisms",
+				"~/.config/shine/prisms",
+				"~/.local/share/shine/prisms",
+			},
+			AutoPath: true,
+		}
+	} else {
+		// Set defaults if not provided
+		if len(cfg.Core.PrismDirs) == 0 {
+			cfg.Core.PrismDirs = []string{
+				"/usr/lib/shine/prisms",
+				"~/.config/shine/prisms",
+				"~/.local/share/shine/prisms",
+			}
+		}
+	}
+
+	// Initialize prisms map if nil
+	if cfg.Prisms == nil {
+		cfg.Prisms = make(map[string]*PrismConfig)
+	}
+
+	// Backward compatibility: Migrate old config sections to prisms
+	migrated := false
+
+	if cfg.Bar != nil {
+		if _, exists := cfg.Prisms["bar"]; !exists {
+			cfg.Prisms["bar"] = &PrismConfig{
+				Name:            "bar",
+				Enabled:         cfg.Bar.Enabled,
+				Edge:            cfg.Bar.Edge,
+				Lines:           cfg.Bar.Lines,
+				Columns:         cfg.Bar.Columns,
+				LinesPixels:     cfg.Bar.LinesPixels,
+				ColumnsPixels:   cfg.Bar.ColumnsPixels,
+				MarginTop:       cfg.Bar.MarginTop,
+				MarginLeft:      cfg.Bar.MarginLeft,
+				MarginBottom:    cfg.Bar.MarginBottom,
+				MarginRight:     cfg.Bar.MarginRight,
+				HideOnFocusLoss: cfg.Bar.HideOnFocusLoss,
+				FocusPolicy:     cfg.Bar.FocusPolicy,
+				OutputName:      cfg.Bar.OutputName,
+			}
+			migrated = true
+		}
+	}
+
+	if cfg.Chat != nil {
+		if _, exists := cfg.Prisms["chat"]; !exists {
+			cfg.Prisms["chat"] = &PrismConfig{
+				Name:            "chat",
+				Enabled:         cfg.Chat.Enabled,
+				Edge:            cfg.Chat.Edge,
+				Lines:           cfg.Chat.Lines,
+				Columns:         cfg.Chat.Columns,
+				LinesPixels:     cfg.Chat.LinesPixels,
+				ColumnsPixels:   cfg.Chat.ColumnsPixels,
+				MarginTop:       cfg.Chat.MarginTop,
+				MarginLeft:      cfg.Chat.MarginLeft,
+				MarginBottom:    cfg.Chat.MarginBottom,
+				MarginRight:     cfg.Chat.MarginRight,
+				HideOnFocusLoss: cfg.Chat.HideOnFocusLoss,
+				FocusPolicy:     cfg.Chat.FocusPolicy,
+				OutputName:      cfg.Chat.OutputName,
+			}
+			migrated = true
+		}
+	}
+
+	if cfg.Clock != nil {
+		if _, exists := cfg.Prisms["clock"]; !exists {
+			cfg.Prisms["clock"] = &PrismConfig{
+				Name:            "clock",
+				Enabled:         cfg.Clock.Enabled,
+				Edge:            cfg.Clock.Edge,
+				Lines:           cfg.Clock.Lines,
+				Columns:         cfg.Clock.Columns,
+				LinesPixels:     cfg.Clock.LinesPixels,
+				ColumnsPixels:   cfg.Clock.ColumnsPixels,
+				MarginTop:       cfg.Clock.MarginTop,
+				MarginLeft:      cfg.Clock.MarginLeft,
+				MarginBottom:    cfg.Clock.MarginBottom,
+				MarginRight:     cfg.Clock.MarginRight,
+				HideOnFocusLoss: cfg.Clock.HideOnFocusLoss,
+				FocusPolicy:     cfg.Clock.FocusPolicy,
+				OutputName:      cfg.Clock.OutputName,
+			}
+			migrated = true
+		}
+	}
+
+	if cfg.SysInfo != nil {
+		if _, exists := cfg.Prisms["sysinfo"]; !exists {
+			cfg.Prisms["sysinfo"] = &PrismConfig{
+				Name:            "sysinfo",
+				Enabled:         cfg.SysInfo.Enabled,
+				Edge:            cfg.SysInfo.Edge,
+				Lines:           cfg.SysInfo.Lines,
+				Columns:         cfg.SysInfo.Columns,
+				LinesPixels:     cfg.SysInfo.LinesPixels,
+				ColumnsPixels:   cfg.SysInfo.ColumnsPixels,
+				MarginTop:       cfg.SysInfo.MarginTop,
+				MarginLeft:      cfg.SysInfo.MarginLeft,
+				MarginBottom:    cfg.SysInfo.MarginBottom,
+				MarginRight:     cfg.SysInfo.MarginRight,
+				HideOnFocusLoss: cfg.SysInfo.HideOnFocusLoss,
+				FocusPolicy:     cfg.SysInfo.FocusPolicy,
+				OutputName:      cfg.SysInfo.OutputName,
+			}
+			migrated = true
+		}
+	}
+
+	if migrated {
+		fmt.Fprintf(os.Stderr, "\n⚠️  Warning: Detected deprecated config format ([bar], [chat], etc.)\n")
+		fmt.Fprintf(os.Stderr, "   Consider migrating to new [prisms.*] format.\n")
+		fmt.Fprintf(os.Stderr, "   See: https://github.com/starbased-co/shine/blob/main/docs/PRISM_SYSTEM_DESIGN.md\n\n")
+	}
+
 	return cfg
 }
 

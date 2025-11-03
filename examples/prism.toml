@@ -1,0 +1,41 @@
+# Example prism.toml manifest file
+# Place this in your prism directory for manifest-based discovery
+#
+# Directory structure:
+# ~/.config/shine/prisms/weather/
+# ├── prism.toml          # This manifest file
+# ├── shine-weather       # The executable binary
+# └── README.md          # Optional documentation
+
+[prism]
+# Prism name (must match directory name for auto-discovery)
+name = "weather"
+
+# Version string (semantic versioning recommended)
+version = "1.0.0"
+
+# Binary name (relative to this directory)
+binary = "shine-weather"
+
+# Description (shown in prism listing)
+description = "Weather widget with icons and auto-refresh"
+
+# Author information
+author = "Your Name <email@example.com>"
+
+# License
+license = "MIT"
+
+# Optional dependencies section
+[dependencies]
+# Specify minimum shine version or other requirements
+requires = [
+    "shine >= 0.2.0",
+]
+
+# Optional metadata (free-form key-value pairs)
+[metadata]
+homepage = "https://github.com/yourname/shine-weather"
+repository = "https://github.com/yourname/shine-weather"
+documentation = "https://github.com/yourname/shine-weather/blob/main/README.md"
+tags = ["weather", "widget", "status-bar"]

@@ -4,10 +4,102 @@ import "github.com/starbased-co/shine/pkg/panel"
 
 // Config represents the main shine configuration
 type Config struct {
+	Core   *CoreConfig               `toml:"core"`
+	Prisms map[string]*PrismConfig   `toml:"prisms"`
+
+	// Deprecated: Use Prisms["chat"] instead
 	Chat    *ChatConfig    `toml:"chat"`
+	// Deprecated: Use Prisms["bar"] instead
 	Bar     *BarConfig     `toml:"bar"`
+	// Deprecated: Use Prisms["clock"] instead
 	Clock   *ClockConfig   `toml:"clock"`
+	// Deprecated: Use Prisms["sysinfo"] instead
 	SysInfo *SysInfoConfig `toml:"sysinfo"`
+}
+
+// CoreConfig holds global shine settings
+type CoreConfig struct {
+	// PrismDirs specifies directories to search for prism binaries (in priority order)
+	PrismDirs []string `toml:"prism_dirs"`
+
+	// AutoPath automatically adds prism directories to PATH for discovery
+	AutoPath bool `toml:"auto_path"`
+
+	// DiscoveryMode determines how prisms are discovered
+	// Options: "convention" (shine-* naming), "manifest" (prism.toml), "auto" (try both)
+	DiscoveryMode string `toml:"discovery_mode"`
+}
+
+// PrismConfig is the unified configuration for ALL prisms (built-in and user)
+type PrismConfig struct {
+	// Name is the prism identifier
+	Name string `toml:"name"`
+
+	// Binary specifies a custom binary name or path (optional)
+	// If empty, defaults to "shine-{name}"
+	// Can be a simple name (e.g., "shine-weather") or a path (e.g., "/usr/bin/shine-weather")
+	Binary string `toml:"binary"`
+
+	// Enabled controls whether this prism should be launched
+	Enabled bool `toml:"enabled"`
+
+	// Panel configuration
+	Edge            string `toml:"edge"`
+	Lines           int    `toml:"lines"`
+	Columns         int    `toml:"columns"`
+	LinesPixels     int    `toml:"lines_pixels"`
+	ColumnsPixels   int    `toml:"columns_pixels"`
+	MarginTop       int    `toml:"margin_top"`
+	MarginLeft      int    `toml:"margin_left"`
+	MarginBottom    int    `toml:"margin_bottom"`
+	MarginRight     int    `toml:"margin_right"`
+	HideOnFocusLoss bool   `toml:"hide_on_focus_loss"`
+	FocusPolicy     string `toml:"focus_policy"`
+	OutputName      string `toml:"output_name"`
+}
+
+// ToPanelConfig converts PrismConfig to panel.Config
+func (pc *PrismConfig) ToPanelConfig() *panel.Config {
+	cfg := panel.NewConfig()
+
+	// Edge placement
+	cfg.Edge = panel.ParseEdge(pc.Edge)
+
+	// Handle background edge special case
+	if cfg.Edge == panel.EdgeBackground {
+		cfg.Type = panel.LayerShellBackground
+	}
+
+	// Size
+	cfg.Lines = pc.Lines
+	cfg.Columns = pc.Columns
+	cfg.LinesPixels = pc.LinesPixels
+	cfg.ColumnsPixels = pc.ColumnsPixels
+
+	// Margins
+	cfg.MarginTop = pc.MarginTop
+	cfg.MarginLeft = pc.MarginLeft
+	cfg.MarginBottom = pc.MarginBottom
+	cfg.MarginRight = pc.MarginRight
+
+	// Behavior
+	cfg.HideOnFocusLoss = pc.HideOnFocusLoss
+
+	// Focus policy
+	cfg.FocusPolicy = panel.ParseFocusPolicy(pc.FocusPolicy)
+
+	// If hide_on_focus_loss is enabled, ensure focus policy is on-demand
+	if cfg.HideOnFocusLoss {
+		cfg.FocusPolicy = panel.FocusOnDemand
+	}
+
+	// Output
+	cfg.OutputName = pc.OutputName
+
+	// Remote control socket (shared across all components)
+	cfg.ListenSocket = "/tmp/shine.sock"
+
+	return cfg
 }
 
 // ChatConfig represents chat component configuration
@@ -257,8 +349,26 @@ func (sic *SysInfoConfig) ToPanelConfig() *panel.Config {
 // NewDefaultConfig creates a default configuration
 func NewDefaultConfig() *Config {
 	return &Config{
+		Core: &CoreConfig{
+			PrismDirs: []string{
+				"/usr/lib/shine/prisms",
+				"~/.config/shine/prisms",
+				"~/.local/share/shine/prisms",
+			},
+			AutoPath: true,
+		},
+		Prisms: map[string]*PrismConfig{
+			"bar": {
+				Name:        "bar",
+				Enabled:     true,
+				Edge:        "top",
+				LinesPixels: 30,
+				FocusPolicy: "not-allowed",
+			},
+		},
+		// Backward compatibility: old config format
 		Chat: &ChatConfig{
-			Enabled:         true,
+			Enabled:         false,
 			Edge:            "bottom",
 			Lines:           10,
 			MarginLeft:      10,

@@ -1,0 +1,112 @@
+# {{.NameTitle}} Prism
+
+A custom Shine prism for displaying [describe your prism's purpose here].
+
+## Building
+
+```bash
+# Build the prism
+make build
+
+# Or manually:
+go build -o shine-{{.Name}} .
+```
+
+## Installation
+
+```bash
+# Install to ~/.local/bin
+make install
+
+# Verify installation
+which shine-{{.Name}}
+```
+
+## Configuration
+
+Add to `~/.config/shine/shine.toml`:
+
+```toml
+[prisms.{{.Name}}]
+enabled = true
+edge = "top"              # Options: top, bottom, left, right, top-left, top-right, etc.
+lines_pixels = 100        # Height in pixels
+columns_pixels = 200      # Width in pixels (for left/right edges)
+margin_top = 0
+margin_left = 0
+margin_right = 0
+margin_bottom = 0
+focus_policy = "not-allowed"  # Options: not-allowed, on-demand, exclusive
+# output_name = "DP-2"    # Optional: specify monitor
+```
+
+## Development
+
+### Running Locally
+
+```bash
+# Run directly (will open in a terminal window)
+make run
+
+# Or with go run:
+go run .
+```
+
+### Testing with Kitty Panel
+
+Test your prism with `kitten panel` before integrating with Shine:
+
+```bash
+kitten panel --edge=top --lines=100px ./shine-{{.Name}}
+```
+
+### Customization
+
+Edit `main.go` to customize:
+
+- **Update frequency**: Change `1*time.Second` in `tickCmd()`
+- **Display content**: Modify the `View()` function
+- **State management**: Add fields to the `model` struct
+- **Data fetching**: Add commands to fetch external data
+- **Styling**: Customize lipgloss styles for colors and layout
+
+## Prism Interface Requirements
+
+Shine prisms must follow these conventions:
+
+1. **Window Title**: Set window title to `{{.WindowName}}` using:
+   ```go
+   fmt.Print("\033]0;{{.WindowName}}\007")
+   ```
+
+2. **No Alt Screen**: Do NOT use `tea.WithAltScreen()` - panels render in normal screen mode
+
+3. **Binary Naming**: Binary must be named `shine-{{.Name}}`
+
+4. **Clean Exit**: Handle `Ctrl+C` and `Esc` gracefully:
+   ```go
+   case tea.KeyEsc, tea.KeyCtrlC:
+       return m, tea.Quit
+   ```
+
+5. **Responsive**: Handle `tea.WindowSizeMsg` for terminal resizing
+
+## Debugging
+
+```bash
+# Check if prism is in PATH
+which shine-{{.Name}}
+
+# Test standalone
+./shine-{{.Name}}
+
+# Check Shine logs
+shine  # Will show if prism fails to launch
+```
+
+## Resources
+
+- [Shine Documentation](https://github.com/starbased-co/shine)
+- [Bubble Tea Tutorial](https://github.com/charmbracelet/bubbletea/tree/master/tutorials)
+- [Lip Gloss Examples](https://github.com/charmbracelet/lipgloss/tree/master/examples)
+- [Prism Developer Guide](../../docs/PRISM_DEVELOPER_GUIDE.md)

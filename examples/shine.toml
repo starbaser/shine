@@ -2,50 +2,138 @@
 # This is an example configuration file for the Shine desktop shell toolkit
 # Copy to ~/.config/shine/shine.toml to use
 
-[chat]
-# Enable/disable chat panel
+# Core configuration
+[core]
+# Prism search paths (searched in priority order)
+prism_dirs = [
+    "/usr/lib/shine/prisms",      # System-wide built-in prisms
+    "~/.config/shine/prisms",      # User prisms
+    "~/.local/share/shine/prisms", # Alternative user location
+]
+
+# Automatically add prism directories to PATH for discovery
+auto_path = true
+
+# Discovery mode: how to find prisms
+# - "convention": Use shine-* naming convention (default, fastest)
+# - "manifest": Require prism.toml manifest files
+# - "auto": Try manifest first, fall back to convention
+discovery_mode = "auto"
+
+# Prisms - ALL widgets are prisms (unified configuration)
+# No distinction between "built-in" and "user" prisms
+
+[prisms.bar]
+# Status bar prism
 enabled = true
-
-# Edge placement: top, bottom, left, right, center, center-sized, background
-edge = "bottom"
-
-# Height in terminal lines (or use lines_pixels for pixel height)
-lines = 10
-
-# Margins in pixels
-margin_left = 10
-margin_right = 10
-margin_bottom = 10
-
-# Hide panel when it loses focus
-hide_on_focus_loss = true
-
-# Focus policy: not-allowed, exclusive, on-demand
-focus_policy = "on-demand"
-
-# Target monitor name (empty = primary monitor)
-# output_name = "DP-1"
-
-[bar]
-# Enable/disable status bar
-enabled = true
-
-# Edge placement: top, bottom, left, right
 edge = "top"
-
-# Height in pixels (status bar should be pixel-based for consistent height)
 lines_pixels = 30
-
-# Margins in pixels
 margin_top = 0
 margin_left = 0
 margin_right = 0
-
-# Don't hide the status bar on focus loss (it's a persistent element)
 hide_on_focus_loss = false
-
-# Focus policy: not-allowed (status bar doesn't need focus)
 focus_policy = "not-allowed"
+# output_name = "DP-2"  # Specify target monitor
 
-# Target monitor name (empty = primary monitor)
-# output_name = "DP-1"
+[prisms.chat]
+# Chat panel prism
+enabled = false
+edge = "bottom"
+lines = 10
+margin_left = 10
+margin_right = 10
+margin_bottom = 10
+hide_on_focus_loss = true
+focus_policy = "on-demand"
+# output_name = "DP-2"
+
+[prisms.clock]
+# Clock widget prism
+enabled = false
+edge = "top-right"
+columns_pixels = 150
+lines_pixels = 30
+margin_top = 0
+margin_right = 0
+focus_policy = "not-allowed"
+# output_name = "DP-2"
+
+[prisms.sysinfo]
+# System info widget prism
+enabled = false
+edge = "top-left"
+columns_pixels = 200
+lines_pixels = 100
+margin_top = 40
+margin_left = 10
+focus_policy = "not-allowed"
+# output_name = "DP-2"
+
+# ============================================================================
+# EXAMPLE PRISMS
+# See examples/prisms/ for complete, documented example prisms:
+# - weather: Weather display with icons and auto-refresh
+# - spotify: Music player with playback controls
+# - sysmonitor: System resource monitor (CPU/memory/disk)
+#
+# To use an example:
+# 1. cd examples/prisms/<name>
+# 2. make install
+# 3. Uncomment and configure below
+# ============================================================================
+
+# Weather prism example
+# [prisms.weather]
+# enabled = true
+# edge = "top-right"
+# columns_pixels = 400
+# lines_pixels = 30
+# margin_top = 0
+# margin_right = 0
+# focus_policy = "not-allowed"
+
+# Spotify prism example
+[prisms.spotify]
+enabled = true
+edge = "bottom"
+columns_pixels = 600
+lines_pixels = 120
+margin_left = 10
+margin_right = 10
+margin_bottom = 10
+output_name = "DP-2"
+focus_policy = "on-demand"    # Allows keyboard controls
+hide_on_focus_loss = false    # Keep visible when not focused
+
+# System monitor prism example
+# [prisms.sysmonitor]
+# enabled = true
+# edge = "top-left"
+# columns_pixels = 300
+# lines_pixels = 150
+# margin_top = 40
+# margin_left = 10
+# focus_policy = "not-allowed"
+
+# Create your own prism:
+# shinectl new-prism my-widget
+# Then configure it here as [prisms.my-widget]
+
+# ============================================================================
+# DEPRECATED CONFIG FORMAT (backward compatibility)
+# The old [bar], [chat] format is deprecated. Use [prisms.*] instead.
+# These sections will be automatically migrated to [prisms.*] internally.
+# ============================================================================
+
+# [bar]
+# enabled = true
+# edge = "top"
+# lines_pixels = 30
+# focus_policy = "not-allowed"
+
+# [chat]
+# enabled = false
+# edge = "bottom"
+# lines = 10
+# hide_on_focus_loss = true
+# focus_policy = "on-demand"

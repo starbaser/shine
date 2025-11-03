@@ -1,0 +1,115 @@
+// {{.NameTitle}} - Custom Shine Prism
+//
+// This is a template for creating custom Shine prisms.
+// Modify the View() function to customize the display.
+
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+func main() {
+	// Set window title for tracking (REQUIRED)
+	// This allows Shine to identify and manage this prism window
+	fmt.Print("\033]0;{{.WindowName}}\007")
+
+	// Create Bubble Tea program
+	// IMPORTANT: Do NOT use tea.WithAltScreen() for panel widgets
+	// Alt screen mode is for full-screen TUIs and breaks panel rendering
+	p := tea.NewProgram(initialModel())
+
+	if _, err := p.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// tickMsg is sent on each update interval
+type tickMsg time.Time
+
+// model holds the application state
+type model struct {
+	counter    int       // Example state: update counter
+	lastUpdate time.Time // Last update time
+	width      int       // Terminal width
+	height     int       // Terminal height
+}
+
+// initialModel creates the initial application state
+func initialModel() model {
+	return model{
+		counter:    0,
+		lastUpdate: time.Now(),
+		width:      80,
+		height:     24,
+	}
+}
+
+// Init returns the initial command
+func (m model) Init() tea.Cmd {
+	return tickCmd()
+}
+
+// tickCmd creates a command that ticks periodically
+func tickCmd() tea.Cmd {
+	return tea.Tick(1*time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
+// Update handles messages and updates the model
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Handle terminal resize
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+
+	case tea.KeyMsg:
+		// Handle keyboard input
+		switch msg.Type {
+		case tea.KeyEsc, tea.KeyCtrlC:
+			return m, tea.Quit
+		}
+
+	case tickMsg:
+		// Handle periodic updates
+		m.counter++
+		m.lastUpdate = time.Time(msg)
+		return m, tickCmd()
+	}
+
+	return m, nil
+}
+
+// View renders the UI
+func (m model) View() string {
+	// Define styles for the prism display
+	// Use high-contrast colors for visibility in panels
+
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")). // Bright blue
+		Bold(true).
+		Padding(0, 1)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("10")). // Bright green
+		Padding(0, 1)
+
+	// Example content - customize this for your prism
+	label := labelStyle.Render("{{.NameTitle}}:")
+	value := valueStyle.Render(fmt.Sprintf("Updates: %d", m.counter))
+
+	// Combine elements horizontally
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		label,
+		value,
+	)
+}

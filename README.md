@@ -261,9 +261,52 @@ Sway renders its background over panels on the background layer. Disable Sway's 
 output * bg #000000 solid_color
 ```
 
+## Creating Custom Prisms
+
+Shine makes it easy to create your own custom widgets (prisms). A prism is a standard Bubble Tea application that follows simple conventions.
+
+### Quick Start
+
+```bash
+# Create a new prism from template
+shinectl new-prism my-widget
+
+# Navigate and build
+cd ~/.config/shine/prisms/my-widget
+make build
+make install
+
+# Configure in shine.toml
+# Add [prisms.my-widget] section
+
+# Launch shine
+shine
+```
+
+### Example Prisms
+
+The `examples/prisms/` directory includes three complete examples:
+
+1. **weather** - Weather display with auto-refresh and icons
+2. **spotify** - Music player with playback controls and progress bar
+3. **sysmonitor** - System resource monitor with CPU/memory/disk usage
+
+Each example is a fully-functional, documented prism demonstrating different capabilities.
+
+### Learn More
+
+See the [Prism Developer Guide](docs/PRISM_DEVELOPER_GUIDE.md) for complete documentation on:
+
+- Prism interface requirements
+- Development workflow
+- Best practices
+- Advanced topics (API integration, state persistence, etc.)
+- Example walkthroughs
+- Troubleshooting
+
 ## Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Complete)
 - [x] Chat component with Bubble Tea
 - [x] Panel configuration system
 - [x] Panel manager
@@ -271,13 +314,19 @@ output * bg #000000 solid_color
 - [x] TOML configuration
 - [x] Basic tests
 
-### Phase 2 (Future)
-- [ ] Additional components (status bar, dock, widgets)
+### Phase 2 (Complete)
+- [x] Prism system architecture
+- [x] Prism discovery and management
+- [x] Developer tooling (`shinectl new-prism`)
+- [x] Example prisms (weather, spotify, sysmonitor)
+- [x] Comprehensive developer guide
+
+### Phase 3 (Future)
 - [ ] Hot reload configuration
-- [ ] Declarative widget system
-- [ ] IPC event bus
-- [ ] Component marketplace
+- [ ] IPC event bus for inter-prism communication
+- [ ] Prism marketplace/repository
 - [ ] Theming system
+- [ ] Advanced prism templates
 
 ## Documentation
 

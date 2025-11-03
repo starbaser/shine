@@ -8,12 +8,13 @@ import (
 )
 
 func usage() {
-	fmt.Println("Usage: shinectl <command> <panel>")
+	fmt.Println("Usage: shinectl <command> [arguments]")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  toggle <panel>  Toggle panel visibility")
-	fmt.Println("  show <panel>    Show panel")
-	fmt.Println("  hide <panel>    Hide panel")
+	fmt.Println("  toggle <panel>      Toggle panel visibility")
+	fmt.Println("  show <panel>        Show panel")
+	fmt.Println("  hide <panel>        Hide panel")
+	fmt.Println("  new-prism <name>    Create new prism from template")
 	fmt.Println()
 	fmt.Println("Panels:")
 	fmt.Println("  chat           Chat component")
@@ -24,6 +25,7 @@ func usage() {
 	fmt.Println("  shinectl show chat")
 	fmt.Println("  shinectl hide chat")
 	fmt.Println("  shinectl toggle bar")
+	fmt.Println("  shinectl new-prism weather")
 }
 
 func getSocketPath() string {
@@ -37,12 +39,34 @@ func getWindowTitle(panelName string) string {
 }
 
 func main() {
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 {
 		usage()
 		os.Exit(1)
 	}
 
 	command := os.Args[1]
+
+	// Handle new-prism command (doesn't need panel operations)
+	if command == "new-prism" {
+		if len(os.Args) < 3 {
+			fmt.Println("Error: prism name required")
+			fmt.Println("Usage: shinectl new-prism <name>")
+			os.Exit(1)
+		}
+		prismName := os.Args[2]
+		if err := newPrism(prismName); err != nil {
+			fmt.Printf("Error creating prism: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// All other commands require panel name
+	if len(os.Args) < 3 {
+		usage()
+		os.Exit(1)
+	}
+
 	panelName := os.Args[2]
 
 	// Get shared socket path

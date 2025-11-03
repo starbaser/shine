@@ -1,0 +1,44 @@
+# Makefile for {{.NameTitle}} Prism
+
+BINARY_NAME=shine-{{.Name}}
+INSTALL_DIR=$(HOME)/.local/bin
+
+.PHONY: all build install clean run help
+
+all: build
+
+# Build the prism binary
+build:
+	@echo "Building {{.NameTitle}} prism..."
+	@go mod tidy
+	go build -o $(BINARY_NAME) .
+	@echo "✓ Built: $(BINARY_NAME)"
+
+# Install to ~/.local/bin (ensure it's in your PATH)
+install: build
+	@echo "Installing to $(INSTALL_DIR)..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(BINARY_NAME) $(INSTALL_DIR)/
+	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
+	@echo "✓ Installed: $(INSTALL_DIR)/$(BINARY_NAME)"
+
+# Run the prism directly (for testing)
+run: build
+	./$(BINARY_NAME)
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning..."
+	@rm -f $(BINARY_NAME)
+	@echo "✓ Cleaned"
+
+# Show help
+help:
+	@echo "{{.NameTitle}} Prism Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make build   - Build the prism binary"
+	@echo "  make install - Build and install to ~/.local/bin"
+	@echo "  make run     - Build and run for testing"
+	@echo "  make clean   - Remove build artifacts"
+	@echo "  make help    - Show this help"
