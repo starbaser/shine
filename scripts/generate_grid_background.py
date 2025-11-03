@@ -48,7 +48,7 @@ def find_font(size: int = 24) -> ImageFont.FreeTypeFont:
     Tries common monospace fonts in order of preference.
     Prioritizes Iosevka custom fonts from ~/.local/share/fonts.
     """
-    font_base = Path("/home/starbased/.local/share/fonts")
+    font_base = Path("~/.local/share/fonts")
 
     # Priority 1: Iosevka custom fonts (in subdirectories)
     iosevka_paths = [
@@ -117,15 +117,28 @@ def draw_grid(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
 
         # Double line for center vertical axis (like ║)
         if col == 8:  # Center column
-            draw.line([(x - double_spacing, edge_offset),
-                      (x - double_spacing, height - 1 - edge_offset)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
-            draw.line([(x + double_spacing, edge_offset),
-                      (x + double_spacing, height - 1 - edge_offset)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
+            draw.line(
+                [
+                    (x - double_spacing, edge_offset),
+                    (x - double_spacing, height - 1 - edge_offset),
+                ],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
+            draw.line(
+                [
+                    (x + double_spacing, edge_offset),
+                    (x + double_spacing, height - 1 - edge_offset),
+                ],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
         else:
-            draw.line([(x, edge_offset), (x, height - 1 - edge_offset)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
+            draw.line(
+                [(x, edge_offset), (x, height - 1 - edge_offset)],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
 
     # Draw horizontal lines
     for row in range(GRID_ROWS + 1):
@@ -139,15 +152,28 @@ def draw_grid(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
 
         # Double line for center horizontal axis (like ═)
         if row == 5:  # Center row
-            draw.line([(edge_offset, y - double_spacing),
-                      (width - 1 - edge_offset, y - double_spacing)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
-            draw.line([(edge_offset, y + double_spacing),
-                      (width - 1 - edge_offset, y + double_spacing)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
+            draw.line(
+                [
+                    (edge_offset, y - double_spacing),
+                    (width - 1 - edge_offset, y - double_spacing),
+                ],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
+            draw.line(
+                [
+                    (edge_offset, y + double_spacing),
+                    (width - 1 - edge_offset, y + double_spacing),
+                ],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
         else:
-            draw.line([(edge_offset, y), (width - 1 - edge_offset, y)],
-                     fill=GRID_COLOR, width=GRID_LINE_WIDTH)
+            draw.line(
+                [(edge_offset, y), (width - 1 - edge_offset, y)],
+                fill=GRID_COLOR,
+                width=GRID_LINE_WIDTH,
+            )
 
 
 def draw_subgrid(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
@@ -168,8 +194,16 @@ def draw_subgrid(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
             # Determine cell boundaries (accounting for edge borders)
             cell_x_start = cell_x + edge_offset if col == 0 else cell_x
             cell_y_start = cell_y + edge_offset if row == 0 else cell_y
-            cell_x_end = cell_x + CELL_WIDTH - edge_offset if col == GRID_COLS - 1 else cell_x + CELL_WIDTH
-            cell_y_end = cell_y + CELL_HEIGHT - edge_offset if row == GRID_ROWS - 1 else cell_y + CELL_HEIGHT
+            cell_x_end = (
+                cell_x + CELL_WIDTH - edge_offset
+                if col == GRID_COLS - 1
+                else cell_x + CELL_WIDTH
+            )
+            cell_y_end = (
+                cell_y + CELL_HEIGHT - edge_offset
+                if row == GRID_ROWS - 1
+                else cell_y + CELL_HEIGHT
+            )
 
             # Draw crosses at subgrid intersections
             for sub_row in range(1, SUBGRID_DIVISIONS):
@@ -186,14 +220,16 @@ def draw_subgrid(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
                     # Draw horizontal line of cross
                     x1 = max(x - SUBGRID_CROSS_SIZE, cell_x_start)
                     x2 = min(x + SUBGRID_CROSS_SIZE, cell_x_end - 1)
-                    draw.line([(x1, y), (x2, y)],
-                             fill=SUBGRID_COLOR, width=SUBGRID_LINE_WIDTH)
+                    draw.line(
+                        [(x1, y), (x2, y)], fill=SUBGRID_COLOR, width=SUBGRID_LINE_WIDTH
+                    )
 
                     # Draw vertical line of cross
                     y1 = max(y - SUBGRID_CROSS_SIZE, cell_y_start)
                     y2 = min(y + SUBGRID_CROSS_SIZE, cell_y_end - 1)
-                    draw.line([(x, y1), (x, y2)],
-                             fill=SUBGRID_COLOR, width=SUBGRID_LINE_WIDTH)
+                    draw.line(
+                        [(x, y1), (x, y2)], fill=SUBGRID_COLOR, width=SUBGRID_LINE_WIDTH
+                    )
 
 
 def draw_cell_labels(
@@ -223,7 +259,9 @@ def draw_cell_labels(
             center_y = cell_y + (CELL_HEIGHT - text_height) // 2
 
             # Draw center label
-            draw.text((center_x, center_y), center_label, fill=TEXT_COLOR, font=center_font)
+            draw.text(
+                (center_x, center_y), center_label, fill=TEXT_COLOR, font=center_font
+            )
 
             # Top-left corner label: pixel coordinates
             corner_label = f"{cell_x},{cell_y}"
@@ -233,7 +271,9 @@ def draw_cell_labels(
             corner_y = cell_y + 4
 
             # Draw corner label
-            draw.text((corner_x, corner_y), corner_label, fill=TEXT_COLOR, font=corner_font)
+            draw.text(
+                (corner_x, corner_y), corner_label, fill=TEXT_COLOR, font=corner_font
+            )
 
 
 def generate_grid_background(
@@ -273,8 +313,12 @@ def generate_grid_background(
     print(f"  Grid: {GRID_COLS}x{GRID_ROWS} cells ({CELL_WIDTH}x{CELL_HEIGHT}px each)")
     if enable_subgrid:
         subcell_size = CELL_WIDTH // SUBGRID_DIVISIONS
-        print(f"  Subgrid: {SUBGRID_DIVISIONS}×{SUBGRID_DIVISIONS} divisions per cell ({subcell_size}px each)")
-    print(f"  Center font size: {center_font_size}px, Corner font size: {corner_font_size}px")
+        print(
+            f"  Subgrid: {SUBGRID_DIVISIONS}×{SUBGRID_DIVISIONS} divisions per cell ({subcell_size}px each)"
+        )
+    print(
+        f"  Center font size: {center_font_size}px, Corner font size: {corner_font_size}px"
+    )
 
 
 def main() -> None:
@@ -286,8 +330,8 @@ def main() -> None:
         "-o",
         "--output",
         type=Path,
-        default=Path("/home/starbased/Pictures/shine-grid-background.png"),
-        help="Output file path (default: ~/Pictures/shine-grid-background.png)",
+        default=Path("scripts/shine-grid-background.png"),
+        help="Output file path (default: ./scripts/shine-grid-background.png)",
     )
     parser.add_argument(
         "--center-font-size",

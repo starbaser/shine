@@ -72,11 +72,11 @@ uv run scripts/generate_grid_background.py --no-corners
 **Hyprland:**
 ```bash
 # Set directly
-hyprctl hyprpaper wallpaper "DP-2,/home/starbased/Pictures/shine-grid-background.png"
+hyprctl hyprpaper wallpaper "DP-2,./scripts/.png"
 
 # Or add to hyprpaper.conf
-preload = /home/starbased/Pictures/shine-grid-background.png
-wallpaper = DP-2,/home/starbased/Pictures/shine-grid-background.png
+preload = ./scripts/.png
+wallpaper = DP-2,./scripts/.png
 ```
 
 **Other methods:**
