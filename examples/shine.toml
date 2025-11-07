@@ -4,18 +4,42 @@
 
 # Core configuration
 [core]
-# Prism binary search paths (prepended to PATH)
-# Single path or array of paths
+# Prism discovery paths - searched in order
+# Shine discovers prisms in three ways:
+# 1. Full Package: directory with prism.toml + binary
+# 2. Data Directory: directory with prism.toml, binary via PATH
+# 3. Standalone Config: *.toml files (e.g., clock.toml, weather.toml)
 path = [
-    "~/.local/share/shine/bin",  # User prism binaries
-    "~/.config/shine/bin",       # Alternative user location
-    "/usr/lib/shine/bin",        # System-wide prism binaries
+    "~/.config/shine/prisms",     # User prism directory (all three types)
+    "~/.local/share/shine/bin",   # User prism binaries
+    "~/.config/shine/bin",        # Alternative user location
+    "/usr/lib/shine/bin",         # System-wide prism binaries
 ]
-# Or use a single path:
-# path = "~/.local/share/shine/bin"
 
-# Prisms - ALL widgets are prisms (unified configuration)
-# No distinction between "built-in" and "user" prisms
+# ============================================================================
+# PRISM CONFIGURATION
+#
+# Prisms can be configured in THREE ways:
+#
+# 1. Inline (here in shine.toml):
+#    - Quick and simple for basic prisms
+#    - Full config in one place
+#    - Example: [prisms.bar] below
+#
+# 2. Directory with prism.toml:
+#    - Self-contained prism packages
+#    - Ships with defaults (prism.toml) + binary + assets
+#    - User overrides specific settings here
+#    - Example: weather prism with ~/.config/shine/prisms/weather/prism.toml
+#
+# 3. Standalone .toml file:
+#    - One file per prism in prisms/ directory
+#    - Example: ~/.config/shine/prisms/clock.toml
+#    - Binary found via PATH
+#
+# Priority: User config here (shine.toml) OVERRIDES prism.toml defaults
+# Metadata (description, author, etc.) comes ONLY from prism.toml, never here
+# ============================================================================
 
 [prisms.bar]
 # Status bar prism - spans full width at top

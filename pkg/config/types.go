@@ -51,37 +51,58 @@ func (cc *CoreConfig) GetPaths() []string {
 }
 
 // PrismConfig is the unified configuration for ALL prisms (built-in and user)
+// Used in both shine.toml [prisms.*] sections and prism.toml files
 type PrismConfig struct {
+	// === Core Identification ===
 	// Name is the prism identifier
 	Name string `toml:"name"`
 
-	// Path specifies a custom binary name or path (optional)
-	// If empty, defaults to "prism-{name}"
-	// Can be a simple name (e.g., "prism-weather") or a path (e.g., "/usr/bin/prism-weather")
-	Path string `toml:"path"`
+	// Version using semantic versioning (optional, primarily for prism.toml)
+	Version string `toml:"version,omitempty"`
 
+	// Path specifies a custom binary name or path (optional)
+	// If empty, defaults to "shine-{name}"
+	// Can be a simple name (e.g., "shine-weather") or a path (e.g., "/usr/bin/shine-weather")
+	Path string `toml:"path,omitempty"`
+
+	// === Runtime State ===
 	// Enabled controls whether this prism should be launched
 	Enabled bool `toml:"enabled"`
 
-	// Panel configuration (new format)
-	Anchor          string      `toml:"anchor"`
-	Width           interface{} `toml:"width"`   // int or string (with "px")
-	Height          interface{} `toml:"height"`  // int or string (with "px")
-	Position        string      `toml:"position"` // "x,y" format
-	MarginTop       int         `toml:"margin_top"`
-	MarginLeft      int         `toml:"margin_left"`
-	MarginBottom    int         `toml:"margin_bottom"`
-	MarginRight     int         `toml:"margin_right"`
-	HideOnFocusLoss bool        `toml:"hide_on_focus_loss"`
-	FocusPolicy     string      `toml:"focus_policy"`
-	OutputName      string      `toml:"output_name"`
+	// === Positioning & Layout ===
+	Anchor   string      `toml:"anchor,omitempty"`
+	Width    interface{} `toml:"width,omitempty"`    // int or string (with "px" or "%")
+	Height   interface{} `toml:"height,omitempty"`   // int or string (with "px" or "%")
+	Position string      `toml:"position,omitempty"` // "x,y" format
 
-	// Deprecated fields (for backward compatibility)
+	// === Margins (Fine-tuning) ===
+	MarginTop    int `toml:"margin_top,omitempty"`
+	MarginLeft   int `toml:"margin_left,omitempty"`
+	MarginBottom int `toml:"margin_bottom,omitempty"`
+	MarginRight  int `toml:"margin_right,omitempty"`
+
+	// === Behavior ===
+	HideOnFocusLoss bool   `toml:"hide_on_focus_loss,omitempty"`
+	FocusPolicy     string `toml:"focus_policy,omitempty"`
+	OutputName      string `toml:"output_name,omitempty"`
+
+	// === Metadata (ONLY meaningful in prism sources) ===
+	// Metadata contains prism-specific information like description, author, license, etc.
+	// During merge, metadata ALWAYS comes from prism source (prism.toml, standalone .toml).
+	// Any metadata in shine.toml [prisms.*] is ignored during merge.
+	Metadata map[string]interface{} `toml:"metadata,omitempty"`
+
+	// === Deprecated fields (for backward compatibility) ===
 	Edge          string `toml:"edge,omitempty"`
 	Lines         int    `toml:"lines,omitempty"`
 	Columns       int    `toml:"columns,omitempty"`
 	LinesPixels   int    `toml:"lines_pixels,omitempty"`
 	ColumnsPixels int    `toml:"columns_pixels,omitempty"`
+
+	// === Internal fields (not from TOML) ===
+	// ResolvedPath is the actual path to the binary after discovery
+	// This is set during discovery and not read from configuration files
+	ResolvedPath string `toml:"-"`
 }
 
 // ToPanelConfig converts PrismConfig to panel.Config
@@ -449,28 +470,10 @@ func NewDefaultConfig() *Config {
 			Path: []string{
 				"~/.local/share/shine/bin",
 				"~/.config/shine/bin",
+				"~/.config/shine/prisms",
 				"/usr/lib/shine/bin",
 			},
 		},
-		Prisms: map[string]*PrismConfig{
-			"bar": {
-				Name:        "bar",
-				Enabled:     true,
-				Edge:        "top",
-				LinesPixels: 30,
-				FocusPolicy: "not-allowed",
-			},
-		},
-		// Backward compatibility: old config format
-		Chat: &ChatConfig{
-			Enabled:         false,
-			Edge:            "bottom",
-			Lines:           10,
-			MarginLeft:      10,
-			MarginRight:     10,
-			MarginBottom:    10,
-			HideOnFocusLoss: true,
-			FocusPolicy:     "on-demand",
-		},
+		Prisms: map[string]*PrismConfig{},
 	}
 }

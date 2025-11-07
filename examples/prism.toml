@@ -1,35 +1,66 @@
-# Example prism.toml manifest file
-# Place this in your prism directory for manifest-based discovery
+# Example prism.toml - Unified Prism Configuration
 #
-# Directory structure:
-# ~/.config/shine/prisms/weather/
-# ├── prism.toml          # This manifest file
-# ├── shine-weather       # The executable binary
-# └── README.md          # Optional documentation
+# This file uses the SAME structure as [prisms.*] sections in shine.toml,
+# with the addition of [metadata] for prism information.
+#
+# Can be used in THREE ways:
+#
+# 1. Full Package (directory with binary):
+#    ~/.config/shine/prisms/weather/
+#    ├── prism.toml          # This file
+#    ├── shine-weather       # Binary included
+#    └── assets/             # Optional assets
+#
+# 2. Data Directory (directory without binary):
+#    ~/.config/shine/prisms/spotify/
+#    ├── prism.toml          # This file
+#    └── config.json         # Prism-specific data
+#    # Binary "shine-spotify" found via PATH
+#
+# 3. Standalone Config:
+#    ~/.config/shine/prisms/clock.toml  # Just this file
+#    # Binary "shine-clock" found via PATH
 
-[prism]
-# Prism name (must match directory name for auto-discovery)
+# === Core Identification ===
 name = "weather"
-
-# Version string (semantic versioning recommended)
 version = "1.0.0"
+path = "shine-weather"  # Binary name or path
 
-# Path to binary (can be name or absolute path)
-path = "shine-weather"
+# === Runtime Behavior (Defaults - User can override in shine.toml) ===
+enabled = true
+anchor = "top-right"
+width = "400px"
+height = "30px"
+position = "0,0"
 
-# Metadata (free-form key-value pairs)
+# === Margins ===
+margin_top = 0
+margin_right = 160  # Offset from clock
+margin_bottom = 0
+margin_left = 0
+
+# === Behavior ===
+hide_on_focus_loss = false
+focus_policy = "not-allowed"
+output_name = "DP-2"
+
+# === Metadata (ONLY meaningful in prism sources) ===
+# Metadata is prism identification/description, not user configuration
+# During merge, metadata ALWAYS comes from prism source
+# Any metadata in shine.toml [prisms.*] is ignored during merge
 [metadata]
-# Description (shown in prism listing)
 description = "Weather widget with icons and auto-refresh"
-
-# Author information
 author = "Your Name <email@example.com>"
-
-# License
 license = "MIT"
-
-# Additional optional metadata
 homepage = "https://github.com/yourname/shine-weather"
 repository = "https://github.com/yourname/shine-weather"
 documentation = "https://github.com/yourname/shine-weather/blob/main/README.md"
 tags = ["weather", "widget", "status-bar"]
+
+# User can override any setting (except metadata) in ~/.config/shine/shine.toml:
+#
+# [prisms.weather]
+# enabled = true          # Override: enable the prism
+# width = "500px"         # Override: make it wider
+# margin_right = 200      # Override: adjust position
+# # All other settings inherited from this prism.toml

@@ -12,10 +12,15 @@ func TestLoad(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test.toml")
 
-	configContent := `[chat]
+	configContent := `[core]
+path = ["~/.config/shine/bin"]
+
+[prisms.chat]
+name = "chat"
 enabled = true
-edge = "bottom"
-lines = 10
+anchor = "bottom"
+height = 10
+width = 80
 margin_left = 10
 margin_right = 10
 margin_bottom = 10
@@ -33,33 +38,30 @@ focus_policy = "on-demand"
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Verify chat config
-	if cfg.Chat == nil {
-		t.Fatal("Chat config is nil")
+	// Verify chat prism config
+	chatPrism, ok := cfg.Prisms["chat"]
+	if !ok {
+		t.Fatal("Chat prism not found")
 	}
 
-	if !cfg.Chat.Enabled {
+	if !chatPrism.Enabled {
 		t.Error("Expected chat to be enabled")
 	}
 
-	if cfg.Chat.Edge != "bottom" {
-		t.Errorf("Expected edge=bottom, got %s", cfg.Chat.Edge)
+	if chatPrism.Anchor != "bottom" {
+		t.Errorf("Expected anchor=bottom, got %s", chatPrism.Anchor)
 	}
 
-	if cfg.Chat.Lines != 10 {
-		t.Errorf("Expected lines=10, got %d", cfg.Chat.Lines)
+	if chatPrism.MarginLeft != 10 {
+		t.Errorf("Expected margin_left=10, got %d", chatPrism.MarginLeft)
 	}
 
-	if cfg.Chat.MarginLeft != 10 {
-		t.Errorf("Expected margin_left=10, got %d", cfg.Chat.MarginLeft)
-	}
-
-	if !cfg.Chat.HideOnFocusLoss {
+	if !chatPrism.HideOnFocusLoss {
 		t.Error("Expected hide_on_focus_loss=true")
 	}
 
-	if cfg.Chat.FocusPolicy != "on-demand" {
-		t.Errorf("Expected focus_policy=on-demand, got %s", cfg.Chat.FocusPolicy)
+	if chatPrism.FocusPolicy != "on-demand" {
+		t.Errorf("Expected focus_policy=on-demand, got %s", chatPrism.FocusPolicy)
 	}
 }
 
@@ -79,9 +81,9 @@ func TestLoadOrDefault(t *testing.T) {
 		t.Fatal("Expected default prisms, got nil")
 	}
 
-	// Default should have bar prism enabled
-	if barCfg, ok := cfg.Prisms["bar"]; !ok || !barCfg.Enabled {
-		t.Error("Expected default bar prism to be enabled")
+	// Default prisms should be empty (discovery-based)
+	if len(cfg.Prisms) != 0 {
+		t.Errorf("Expected empty prisms map, got %d prisms", len(cfg.Prisms))
 	}
 }
 
@@ -90,6 +92,13 @@ func TestSave(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "saved.toml")
 
 	cfg := NewDefaultConfig()
+	// Add a test prism
+	cfg.Prisms["test"] = &PrismConfig{
+		Name:    "test",
+		Enabled: true,
+		Anchor:  "top",
+	}
+
 	if err := Save(cfg, configPath); err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
@@ -105,7 +114,7 @@ func TestSave(t *testing.T) {
 		t.Fatalf("Failed to load saved config: %v", err)
 	}
 
-	if loaded.Chat.Enabled != cfg.Chat.Enabled {
+	if testPrism, ok := loaded.Prisms["test"]; !ok || !testPrism.Enabled {
 		t.Error("Saved and loaded config don't match")
 	}
 }
@@ -178,99 +187,6 @@ columns_pixels = 200
 	}
 }
 
-func TestLoadOrDefault_BackwardCompatibility(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "test.toml")
-
-	// Old config format
-	configContent := `[bar]
-enabled = true
-edge = "top"
-lines_pixels = 30
-
-[chat]
-enabled = false
-edge = "bottom"
-`
-
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("Failed to write test config: %v", err)
-	}
-
-	// Capture stderr for deprecation warning
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	cfg := LoadOrDefault(configPath)
-
-	w.Close()
-	os.Stderr = oldStderr
-
-	var buf [1024]byte
-	n, _ := r.Read(buf[:])
-	output := string(buf[:n])
-
-	// Check for deprecation warning
-	if !strings.Contains(output, "deprecated") {
-		t.Error("Expected deprecation warning for old config format")
-	}
-
-	// Verify migration
-	if cfg.Prisms == nil {
-		t.Fatal("Prisms map is nil")
-	}
-
-	barCfg, ok := cfg.Prisms["bar"]
-	if !ok {
-		t.Fatal("Bar prism not migrated")
-	}
-
-	if !barCfg.Enabled {
-		t.Error("Expected bar to be enabled after migration")
-	}
-
-	chatCfg, ok := cfg.Prisms["chat"]
-	if !ok {
-		t.Fatal("Chat prism not migrated")
-	}
-
-	if chatCfg.Enabled {
-		t.Error("Expected chat to be disabled after migration")
-	}
-}
-
-func TestLoadOrDefault_MixedFormat(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "test.toml")
-
-	// Mix of new and old format
-	configContent := `[core]
-path = ["~/.config/shine/bin"]
-
-[prisms.bar]
-enabled = true
-edge = "top"
-
-[chat]
-enabled = false
-`
-
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("Failed to write test config: %v", err)
-	}
-
-	cfg := LoadOrDefault(configPath)
-
-	// Both should be migrated
-	if _, ok := cfg.Prisms["bar"]; !ok {
-		t.Error("Bar prism not found")
-	}
-
-	if _, ok := cfg.Prisms["chat"]; !ok {
-		t.Error("Chat prism not migrated")
-	}
-}
 
 func TestLoadOrDefault_InitializesDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -348,13 +264,21 @@ func TestNewDefaultConfig_HasPrisms(t *testing.T) {
 		t.Fatal("Default config missing prisms")
 	}
 
-	// Should have at least bar prism
-	barCfg, ok := cfg.Prisms["bar"]
-	if !ok {
-		t.Fatal("Default config missing bar prism")
+	// Default config should have empty prisms (populated by discovery)
+	if len(cfg.Prisms) != 0 {
+		t.Errorf("Expected empty prisms in default config, got %d", len(cfg.Prisms))
 	}
 
-	if !barCfg.Enabled {
-		t.Error("Default bar prism should be enabled")
+	// Core should have prisms directory in search paths
+	paths := cfg.Core.GetPaths()
+	found := false
+	for _, p := range paths {
+		if strings.Contains(p, "prisms") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Default config should include prisms directory in search paths")
 	}
 }
