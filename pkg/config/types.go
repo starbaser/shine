@@ -55,10 +55,10 @@ type PrismConfig struct {
 	// Name is the prism identifier
 	Name string `toml:"name"`
 
-	// Binary specifies a custom binary name or path (optional)
-	// If empty, defaults to "shine-{name}"
-	// Can be a simple name (e.g., "shine-weather") or a path (e.g., "/usr/bin/shine-weather")
-	Binary string `toml:"binary"`
+	// Path specifies a custom binary name or path (optional)
+	// If empty, defaults to "prism-{name}"
+	// Can be a simple name (e.g., "prism-weather") or a path (e.g., "/usr/bin/prism-weather")
+	Path string `toml:"path"`
 
 	// Enabled controls whether this prism should be launched
 	Enabled bool `toml:"enabled"`

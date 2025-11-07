@@ -18,7 +18,7 @@ type Manifest struct {
 type PrismInfo struct {
 	Name    string `toml:"name"`
 	Version string `toml:"version"`
-	Binary  string `toml:"binary"`
+	Path    string `toml:"path"`
 }
 
 // DiscoveryMode determines how prisms are discovered
@@ -50,8 +50,8 @@ func (m *Manifest) Validate() error {
 	if m.Prism.Name == "" {
 		return fmt.Errorf("prism name is required")
 	}
-	if m.Prism.Binary == "" {
-		return fmt.Errorf("prism binary is required")
+	if m.Prism.Path == "" {
+		return fmt.Errorf("prism path is required")
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func DiscoverByManifest(searchPaths []string) (map[string]string, error) {
 				continue
 			}
 
-			binaryPath := filepath.Join(prismDir, manifest.Prism.Binary)
+			binaryPath := filepath.Join(prismDir, manifest.Prism.Path)
 			if isExecutable(binaryPath) {
 				prisms[manifest.Prism.Name] = binaryPath
 			}

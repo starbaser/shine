@@ -126,7 +126,7 @@ focus_policy = "not-allowed"
 [prisms.weather]
 enabled = true
 name = "weather"
-binary = "shine-weather"
+path = "shine-weather"
 edge = "top-right"
 columns_pixels = 200
 `
@@ -173,8 +173,8 @@ columns_pixels = 200
 		t.Fatal("Weather prism not found")
 	}
 
-	if weatherCfg.Binary != "shine-weather" {
-		t.Errorf("Expected binary 'shine-weather', got %s", weatherCfg.Binary)
+	if weatherCfg.Path != "shine-weather" {
+		t.Errorf("Expected path 'shine-weather', got %s", weatherCfg.Path)
 	}
 }
 

@@ -27,7 +27,7 @@ cat > ~/.config/shine/prisms/weather/prism.toml <<EOF
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget"
@@ -138,7 +138,7 @@ To use new features:
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget"

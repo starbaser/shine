@@ -113,7 +113,7 @@ enabled = true
 
 # Optional: Override binary name or path
 # If not set, defaults to "shine-{name}"
-binary = "shine-custom-name"
+path = "shine-custom-name"
 
 # Panel configuration (same as before)
 edge = "top"
@@ -193,7 +193,7 @@ Add custom widgets without modifying Shine:
 ```toml
 [prisms.weather]
 enabled = true
-binary = "shine-weather"  # Your custom binary
+path = "shine-weather"  # Your custom path
 edge = "top-right"
 columns_pixels = 200
 ```
@@ -269,7 +269,7 @@ Prisms follow the `shine-{name}` convention:
 Override with `binary` field:
 ```toml
 [prisms.mywidget]
-binary = "custom-widget-name"
+path = "custom-widget-name"
 ```
 
 ## Troubleshooting
@@ -284,7 +284,7 @@ Failed to launch prism weather: failed to find prism binary: prism weather not f
 1. Check binary exists: `ls ~/.config/shine/prisms/shine-weather`
 2. Check binary is executable: `chmod +x ~/.config/shine/prisms/shine-weather`
 3. Check prism_dirs includes the directory
-4. Try explicit path: `binary = "/full/path/to/binary"`
+4. Try explicit path: `path = "/full/path/to/binary"`
 
 ### Deprecation Warning
 
@@ -300,7 +300,7 @@ If wrong prism launches, check discovery priority. Use explicit path:
 
 ```toml
 [prisms.bar]
-binary = "/usr/local/bin/shine-bar"  # Explicit path
+path = "/usr/local/bin/shine-bar"  # Explicit path to binary
 ```
 
 ## Migration Checklist

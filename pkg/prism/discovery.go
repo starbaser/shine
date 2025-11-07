@@ -56,8 +56,8 @@ func (pm *Manager) augmentPATH(searchPaths []string) {
 func (pm *Manager) FindPrism(name string, cfg *config.PrismConfig) (string, error) {
 	// Determine binary name to search for
 	binaryName := name
-	if cfg != nil && cfg.Binary != "" {
-		binaryName = cfg.Binary
+	if cfg != nil && cfg.Path != "" {
+		binaryName = cfg.Path
 	} else {
 		// Apply naming convention: prism-{name}
 		if !strings.HasPrefix(name, "prism-") {

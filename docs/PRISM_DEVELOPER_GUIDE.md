@@ -586,7 +586,7 @@ hide_on_focus_loss = false    # Hide when panel loses focus
 output_name = "DP-2"          # Target specific monitor (optional)
 
 # Binary
-binary = "shine-myprism"    # Custom binary name/path (optional)
+path = "shine-myprism"    # Custom path or binary name (optional)
 ```
 
 ### Edge Options

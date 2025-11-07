@@ -156,7 +156,7 @@ lines_pixels = 30
 
 [prisms.weather]
 enabled = true
-binary = "shine-weather"
+path = "shine-weather"
 edge = "top-right"
 columns_pixels = 200
 ```
@@ -178,7 +178,7 @@ enabled = false
 ```
 FindPrism(name, config)
     │
-    ├─ Level 1: Explicit path from config.Binary?
+    ├─ Level 1: Explicit path from config.Path?
     │   └─ Yes: Use that path ✓
     │
     ├─ Level 2: In cache?

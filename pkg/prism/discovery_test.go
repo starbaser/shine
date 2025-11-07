@@ -131,7 +131,7 @@ func TestFindPrism_ExplicitBinaryPath(t *testing.T) {
 	pm := NewManager([]string{})
 
 	cfg := &config.PrismConfig{
-		Binary: binaryPath,
+		Path: binaryPath,
 	}
 
 	path, err := pm.FindPrism("test", cfg)
@@ -213,7 +213,7 @@ func TestFindPrism_CustomBinaryName(t *testing.T) {
 	pm := NewManager([]string{tmpDir})
 
 	cfg := &config.PrismConfig{
-		Binary: "custom-widget",
+		Path: "custom-widget",
 	}
 
 	path, err := pm.FindPrism("weather", cfg)

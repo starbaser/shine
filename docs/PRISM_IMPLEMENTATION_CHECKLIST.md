@@ -248,7 +248,7 @@ type Config struct {
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 author = "User <user@example.com>"

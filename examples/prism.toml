@@ -14,8 +14,8 @@ name = "weather"
 # Version string (semantic versioning recommended)
 version = "1.0.0"
 
-# Binary name (relative to this directory)
-binary = "shine-weather"
+# Path to binary (can be name or absolute path)
+path = "shine-weather"
 
 # Metadata (free-form key-value pairs)
 [metadata]

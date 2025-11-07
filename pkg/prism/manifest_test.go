@@ -14,7 +14,7 @@ func TestManifestParsing(t *testing.T) {
 [prism]
 name = "test-prism"
 version = "1.0.0"
-binary = "shine-test"
+path = "shine-test"
 
 [metadata]
 description = "Test prism"
@@ -41,8 +41,8 @@ homepage = "https://example.com"
 		t.Errorf("Expected version '1.0.0', got '%s'", manifest.Prism.Version)
 	}
 
-	if manifest.Prism.Binary != "shine-test" {
-		t.Errorf("Expected binary 'shine-test', got '%s'", manifest.Prism.Binary)
+	if manifest.Prism.Path != "shine-test" {
+		t.Errorf("Expected path 'shine-test', got '%s'", manifest.Prism.Path)
 	}
 }
 
@@ -58,7 +58,7 @@ func TestManifestValidation(t *testing.T) {
 				Prism: PrismInfo{
 					Name:    "test",
 					Version: "1.0.0",
-					Binary:  "shine-test",
+					Path:    "shine-test",
 				},
 			},
 			expectError: false,
@@ -68,7 +68,7 @@ func TestManifestValidation(t *testing.T) {
 			manifest: &Manifest{
 				Prism: PrismInfo{
 					Version: "1.0.0",
-					Binary:  "shine-test",
+					Path:    "shine-test",
 				},
 			},
 			expectError: true,
@@ -77,14 +77,14 @@ func TestManifestValidation(t *testing.T) {
 			name: "missing version",
 			manifest: &Manifest{
 				Prism: PrismInfo{
-					Name:   "test",
-					Binary: "shine-test",
+					Name: "test",
+					Path: "shine-test",
 				},
 			},
 			expectError: false,
 		},
 		{
-			name: "missing binary",
+			name: "missing path",
 			manifest: &Manifest{
 				Prism: PrismInfo{
 					Name:    "test",
@@ -121,7 +121,7 @@ func TestDiscoveryByManifest(t *testing.T) {
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget"
@@ -167,7 +167,7 @@ func TestFindManifestDir(t *testing.T) {
 [prism]
 name = "test-prism"
 version = "1.0.0"
-binary = "shine-test-prism"
+path = "shine-test-prism"
 `
 	manifestPath := filepath.Join(prismDir, "prism.toml")
 	if err := os.WriteFile(manifestPath, []byte(manifestContent), 0644); err != nil {

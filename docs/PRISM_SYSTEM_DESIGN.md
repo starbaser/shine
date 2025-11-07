@@ -211,7 +211,7 @@ type CoreConfig struct {
 type PrismConfig struct {
     // Prism identification
     Name   string `toml:"name"`   // Prism name
-    Binary string `toml:"binary"` // Custom binary name (optional)
+    Path string `toml:"path"` // Custom binary name (optional)
 
     // Prism state
     Enabled bool `toml:"enabled"`
@@ -278,7 +278,7 @@ lines_pixels = 30
 [prisms.weather]
 enabled = true
 name = "weather"
-binary = "shine-weather"  # Optional: defaults to "shine-{name}"
+path = "shine-weather"  # Optional: defaults to "shine-{name}"
 edge = "top-right"
 columns_pixels = 200
 lines_pixels = 80
@@ -812,7 +812,7 @@ func launchPrism(
     cfg *config.PrismConfig,
 ) error {
     // Resolve binary name
-    binaryName := cfg.Binary
+    binaryName := cfg.Path
     if binaryName == "" {
         binaryName = fmt.Sprintf("shine-%s", name)
     }
@@ -1222,7 +1222,7 @@ Phase 3 adds production-ready advanced features for enhanced prism management an
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget with icons"
@@ -1419,7 +1419,7 @@ examples/prisms/weather/
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget"

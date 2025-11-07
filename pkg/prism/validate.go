@@ -113,7 +113,7 @@ func ValidateManifest(manifestPath string) (*ValidationResult, error) {
 	}
 
 	// Validate referenced binary
-	binaryPath := manifest.Prism.Binary
+	binaryPath := manifest.Prism.Path
 	if !strings.Contains(binaryPath, string(os.PathSeparator)) {
 		manifestDir := filepath.Dir(manifestPath)
 		binaryPath = filepath.Join(manifestDir, binaryPath)

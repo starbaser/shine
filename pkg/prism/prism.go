@@ -10,7 +10,7 @@ import (
 // All widgets are treated as prisms - no distinction between built-in and user prisms
 type Prism struct {
 	Name     string             // Prism name (e.g., "bar", "weather")
-	Binary   string             // Full path to executable
+	Path     string             // Full path to executable
 	Config   *config.PrismConfig // Configuration from TOML
 	Process  *exec.Cmd          // Runtime process handle
 	WindowID string             // Hyprland window ID (if available)
@@ -22,7 +22,7 @@ func (p *Prism) Launch() error {
 		return nil // Already running
 	}
 
-	cmd := exec.Command(p.Binary)
+	cmd := exec.Command(p.Path)
 	if err := cmd.Start(); err != nil {
 		return err
 	}

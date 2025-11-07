@@ -366,7 +366,7 @@ ok      github.com/starbased-co/shine/pkg/config        3.206s
 [prism]
 name = "weather"
 version = "1.0.0"
-binary = "shine-weather"
+path = "shine-weather"
 
 [metadata]
 description = "Weather widget"
