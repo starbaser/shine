@@ -21,21 +21,43 @@ func main() {
 	fmt.Printf("✨ Shine - Hyprland Layer Shell TUI Toolkit\n")
 	fmt.Printf("Configuration: %s\n\n", configPath)
 
-	// Initialize prism manager with configured search paths
-	prismMgr := prism.NewManager(cfg.Core.GetPaths())
-
 	// Create panel manager
 	panelMgr := panel.NewManager()
 
-	// Launch all enabled prisms (unified treatment)
+	// Create prism manager
+	prismMgr := prism.NewManager(panelMgr)
+
+	// Launch all enabled prisms
 	for name, prismCfg := range cfg.Prisms {
 		if prismCfg == nil || !prismCfg.Enabled {
 			continue
 		}
 
-		if err := launchPrism(prismMgr, panelMgr, name, prismCfg); err != nil {
+		fmt.Printf("Launching %s", name)
+		if prismCfg.ResolvedPath != "" {
+			fmt.Printf(" (%s)", prismCfg.ResolvedPath)
+		}
+		fmt.Println("...")
+
+		if err := prismMgr.Launch(name, prismCfg); err != nil {
 			log.Printf("Failed to launch prism %s: %v", name, err)
 			continue
+		}
+
+		// Report launch status
+		if instance, ok := prismMgr.Get(name); ok {
+			if instance.Panel.WindowID != "" {
+				fmt.Printf("  ✓ %s launched (Window ID: %s)\n", name, instance.Panel.WindowID)
+			} else if instance.Panel.Command != nil && instance.Panel.Command.Process != nil {
+				fmt.Printf("  ✓ %s launched (PID: %d)\n", name, instance.Panel.Command.Process.Pid)
+			} else {
+				fmt.Printf("  ✓ %s launched\n", name)
+			}
+
+			panelCfg := prismCfg.ToPanelConfig()
+			if panelCfg.ListenSocket != "" {
+				fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
+			}
 		}
 
 		// Wait for each prism to fully start before launching the next
@@ -43,15 +65,15 @@ func main() {
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	// List running panels
-	panels := panelMgr.List()
-	if len(panels) == 0 {
+	// List running prisms
+	running := prismMgr.List()
+	if len(running) == 0 {
 		fmt.Println("\nNo prisms enabled. Edit your config to enable prisms.")
 		fmt.Printf("Config location: %s\n", configPath)
 		os.Exit(0)
 	}
 
-	fmt.Printf("\nRunning %d prism(s): %v\n", len(panels), panels)
+	fmt.Printf("\nRunning %d prism(s): %v\n", len(running), running)
 	fmt.Println("Press Ctrl+C to stop all prisms")
 
 	// Setup signal handling
@@ -64,53 +86,13 @@ func main() {
 	<-sigChan
 	fmt.Println("\n\nShutting down...")
 
-	// Stop all panels
-	for _, name := range panelMgr.List() {
+	// Stop all prisms
+	for _, name := range prismMgr.List() {
 		fmt.Printf("Stopping %s...\n", name)
-		if err := panelMgr.Stop(name); err != nil {
+		if err := prismMgr.Stop(name); err != nil {
 			log.Printf("Error stopping %s: %v", name, err)
 		}
 	}
 
 	fmt.Println("Goodbye!")
-}
-
-// launchPrism discovers and launches a prism with the given configuration
-func launchPrism(
-	prismMgr *prism.Manager,
-	panelMgr *panel.Manager,
-	name string,
-	cfg *config.PrismConfig,
-) error {
-	// Find prism binary using discovery manager
-	prismPath, err := prismMgr.FindPrism(name, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to find prism binary: %w", err)
-	}
-
-	fmt.Printf("Launching %s (%s)...\n", name, prismPath)
-
-	// Convert prism config to panel config
-	panelCfg := cfg.ToPanelConfig()
-
-	// Launch via panel manager
-	instance, err := panelMgr.Launch(name, panelCfg, prismPath)
-	if err != nil {
-		return fmt.Errorf("failed to launch: %w", err)
-	}
-
-	// Report launch status
-	if instance.WindowID != "" {
-		fmt.Printf("  ✓ %s launched (Window ID: %s)\n", name, instance.WindowID)
-	} else if instance.Command != nil && instance.Command.Process != nil {
-		fmt.Printf("  ✓ %s launched (PID: %d)\n", name, instance.Command.Process.Pid)
-	} else {
-		fmt.Printf("  ✓ %s launched\n", name)
-	}
-
-	if panelCfg.ListenSocket != "" {
-		fmt.Printf("  ✓ Remote control: %s\n", panelCfg.ListenSocket)
-	}
-
-	return nil
 }
