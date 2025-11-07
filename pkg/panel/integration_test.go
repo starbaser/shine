@@ -7,11 +7,8 @@ import (
 
 func TestKittenArgsGeneration(t *testing.T) {
 	cfg := NewConfig()
-	cfg.Anchor = AnchorBottom
+	cfg.Origin = OriginBottomCenter
 	cfg.Height = Dimension{Value: 10, IsPixels: false}
-	cfg.MarginLeft = 10
-	cfg.MarginRight = 10
-	cfg.MarginBottom = 10
 	cfg.HideOnFocusLoss = true
 	cfg.FocusPolicy = FocusOnDemand
 	cfg.ListenSocket = "/tmp/shine-chat.sock"
@@ -71,20 +68,16 @@ func TestPixelSizing(t *testing.T) {
 	}
 }
 
-func TestBackgroundAnchor(t *testing.T) {
+func TestBackgroundLayer(t *testing.T) {
 	cfg := NewConfig()
-	cfg.Anchor = AnchorBackground
+	cfg.Origin = OriginCenter
 	cfg.Type = LayerShellBackground
 
 	args := cfg.ToKittenArgs("test")
 	argsStr := strings.Join(args, " ")
 
-	if !strings.Contains(argsStr, "--edge=background") {
-		t.Error("Missing --edge=background")
-	}
-
 	if !strings.Contains(argsStr, "--layer=background") {
-		t.Error("Missing --layer=background for background anchor")
+		t.Error("Missing --layer=background for background layer")
 	}
 }
 

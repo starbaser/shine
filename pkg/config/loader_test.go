@@ -18,12 +18,9 @@ path = ["~/.config/shine/bin"]
 [prisms.chat]
 name = "chat"
 enabled = true
-anchor = "bottom"
+origin = "bottom"
 height = 10
 width = 80
-margin_left = 10
-margin_right = 10
-margin_bottom = 10
 hide_on_focus_loss = true
 focus_policy = "on-demand"
 `
@@ -48,12 +45,8 @@ focus_policy = "on-demand"
 		t.Error("Expected chat to be enabled")
 	}
 
-	if chatPrism.Anchor != "bottom" {
-		t.Errorf("Expected anchor=bottom, got %s", chatPrism.Anchor)
-	}
-
-	if chatPrism.MarginLeft != 10 {
-		t.Errorf("Expected margin_left=10, got %d", chatPrism.MarginLeft)
+	if chatPrism.Origin != "bottom" {
+		t.Errorf("Expected origin=bottom, got %s", chatPrism.Origin)
 	}
 
 	if !chatPrism.HideOnFocusLoss {
@@ -96,7 +89,7 @@ func TestSave(t *testing.T) {
 	cfg.Prisms["test"] = &PrismConfig{
 		Name:    "test",
 		Enabled: true,
-		Anchor:  "top",
+		Origin:  "top",
 	}
 
 	if err := Save(cfg, configPath); err != nil {
@@ -128,16 +121,16 @@ path = ["/usr/lib/shine/bin", "~/.config/shine/bin"]
 
 [prisms.bar]
 enabled = true
-edge = "top"
-lines_pixels = 30
+origin = "top"
+height = "30px"
 focus_policy = "not-allowed"
 
 [prisms.weather]
 enabled = true
 name = "weather"
 path = "shine-weather"
-edge = "top-right"
-columns_pixels = 200
+origin = "top-right"
+width = "200px"
 `
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -173,8 +166,8 @@ columns_pixels = 200
 		t.Error("Expected bar to be enabled")
 	}
 
-	if barCfg.Edge != "top" {
-		t.Errorf("Expected edge 'top', got %s", barCfg.Edge)
+	if barCfg.Origin != "top" {
+		t.Errorf("Expected origin 'top', got %s", barCfg.Origin)
 	}
 
 	weatherCfg, ok := cfg.Prisms["weather"]
@@ -216,14 +209,12 @@ enabled = true
 
 func TestPrismConfig_ToPanelConfig(t *testing.T) {
 	prismCfg := &PrismConfig{
-		Name:          "test",
-		Enabled:       true,
-		Edge:          "top",
-		LinesPixels:   30,
-		MarginTop:     10,
-		MarginLeft:    20,
-		FocusPolicy:   "not-allowed",
-		OutputName:    "DP-2",
+		Name:        "test",
+		Enabled:     true,
+		Origin:      "top",
+		Height:      "30px",
+		FocusPolicy: "not-allowed",
+		OutputName:  "DP-2",
 	}
 
 	panelCfg := prismCfg.ToPanelConfig()
@@ -234,14 +225,6 @@ func TestPrismConfig_ToPanelConfig(t *testing.T) {
 
 	if panelCfg.Height.Value != 30 || !panelCfg.Height.IsPixels {
 		t.Errorf("Expected height 30px, got %+v", panelCfg.Height)
-	}
-
-	if panelCfg.MarginTop != 10 {
-		t.Errorf("Expected margin_top 10, got %d", panelCfg.MarginTop)
-	}
-
-	if panelCfg.MarginLeft != 20 {
-		t.Errorf("Expected margin_left 20, got %d", panelCfg.MarginLeft)
 	}
 
 	if panelCfg.OutputName != "DP-2" {

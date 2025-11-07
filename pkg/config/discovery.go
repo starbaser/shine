@@ -217,9 +217,14 @@ func MergePrismConfigs(prismSource, userConfig *PrismConfig) *PrismConfig {
 	merged.Enabled = userConfig.Enabled || prismSource.Enabled
 
 	// === Positioning & Layout ===
-	merged.Anchor = prismSource.Anchor
-	if userConfig.Anchor != "" {
-		merged.Anchor = userConfig.Anchor
+	merged.Origin = prismSource.Origin
+	if userConfig.Origin != "" {
+		merged.Origin = userConfig.Origin
+	}
+
+	merged.Position = prismSource.Position
+	if userConfig.Position != "" {
+		merged.Position = userConfig.Position
 	}
 
 	merged.Width = prismSource.Width
@@ -230,32 +235,6 @@ func MergePrismConfigs(prismSource, userConfig *PrismConfig) *PrismConfig {
 	merged.Height = prismSource.Height
 	if userConfig.Height != nil {
 		merged.Height = userConfig.Height
-	}
-
-	merged.Position = prismSource.Position
-	if userConfig.Position != "" {
-		merged.Position = userConfig.Position
-	}
-
-	// === Margins ===
-	merged.MarginTop = prismSource.MarginTop
-	if userConfig.MarginTop != 0 {
-		merged.MarginTop = userConfig.MarginTop
-	}
-
-	merged.MarginLeft = prismSource.MarginLeft
-	if userConfig.MarginLeft != 0 {
-		merged.MarginLeft = userConfig.MarginLeft
-	}
-
-	merged.MarginBottom = prismSource.MarginBottom
-	if userConfig.MarginBottom != 0 {
-		merged.MarginBottom = userConfig.MarginBottom
-	}
-
-	merged.MarginRight = prismSource.MarginRight
-	if userConfig.MarginRight != 0 {
-		merged.MarginRight = userConfig.MarginRight
 	}
 
 	// === Behavior ===
@@ -276,32 +255,6 @@ func MergePrismConfigs(prismSource, userConfig *PrismConfig) *PrismConfig {
 
 	// === Metadata (ALWAYS from prism source, NEVER from user config) ===
 	merged.Metadata = prismSource.Metadata
-
-	// === Deprecated fields ===
-	merged.Edge = prismSource.Edge
-	if userConfig.Edge != "" {
-		merged.Edge = userConfig.Edge
-	}
-
-	merged.Lines = prismSource.Lines
-	if userConfig.Lines != 0 {
-		merged.Lines = userConfig.Lines
-	}
-
-	merged.Columns = prismSource.Columns
-	if userConfig.Columns != 0 {
-		merged.Columns = userConfig.Columns
-	}
-
-	merged.LinesPixels = prismSource.LinesPixels
-	if userConfig.LinesPixels != 0 {
-		merged.LinesPixels = userConfig.LinesPixels
-	}
-
-	merged.ColumnsPixels = prismSource.ColumnsPixels
-	if userConfig.ColumnsPixels != 0 {
-		merged.ColumnsPixels = userConfig.ColumnsPixels
-	}
 
 	// === Internal fields ===
 	merged.ResolvedPath = prismSource.ResolvedPath

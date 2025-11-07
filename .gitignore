@@ -1,7 +1,7 @@
 # Binaries
 bin/
-shine
-shine-*
+/shine           # Binary in root only
+/shine-*         # Binaries in root only
 *.exe
 *.exe~
 *.dll

@@ -34,89 +34,69 @@ func (lt LayerType) String() string {
 	}
 }
 
-// Anchor represents panel anchor placement
-type Anchor int
+// Origin represents panel origin (anchor point on screen)
+type Origin int
 
 const (
-	AnchorTop Anchor = iota
-	AnchorBottom
-	AnchorLeft
-	AnchorRight
-	AnchorCenter
-	AnchorNone
-	AnchorCenterSized
-	AnchorBackground
-	AnchorTopLeft
-	AnchorTopRight
-	AnchorBottomLeft
-	AnchorBottomRight
-	AnchorAbsolute
+	OriginTopLeft Origin = iota
+	OriginTopCenter
+	OriginTopRight
+	OriginLeftCenter
+	OriginCenter
+	OriginRightCenter
+	OriginBottomLeft
+	OriginBottomCenter
+	OriginBottomRight
 )
 
-func (a Anchor) String() string {
-	switch a {
-	case AnchorTop:
-		return "top"
-	case AnchorBottom:
-		return "bottom"
-	case AnchorLeft:
-		return "left"
-	case AnchorRight:
-		return "right"
-	case AnchorCenter:
-		return "center"
-	case AnchorNone:
-		return "none"
-	case AnchorCenterSized:
-		return "center-sized"
-	case AnchorBackground:
-		return "background"
-	case AnchorTopLeft:
+func (o Origin) String() string {
+	switch o {
+	case OriginTopLeft:
 		return "top-left"
-	case AnchorTopRight:
+	case OriginTopCenter:
+		return "top-center"
+	case OriginTopRight:
 		return "top-right"
-	case AnchorBottomLeft:
+	case OriginLeftCenter:
+		return "left-center"
+	case OriginCenter:
+		return "center"
+	case OriginRightCenter:
+		return "right-center"
+	case OriginBottomLeft:
 		return "bottom-left"
-	case AnchorBottomRight:
+	case OriginBottomCenter:
+		return "bottom-center"
+	case OriginBottomRight:
 		return "bottom-right"
-	case AnchorAbsolute:
-		return "absolute"
 	default:
 		return "center"
 	}
 }
 
-// ParseAnchor converts string to Anchor
-func ParseAnchor(s string) Anchor {
+// ParseOrigin converts string to Origin
+func ParseOrigin(s string) Origin {
 	switch s {
-	case "top":
-		return AnchorTop
-	case "bottom":
-		return AnchorBottom
-	case "left":
-		return AnchorLeft
-	case "right":
-		return AnchorRight
-	case "center":
-		return AnchorCenter
-	case "none":
-		return AnchorNone
-	case "center-sized":
-		return AnchorCenterSized
-	case "background":
-		return AnchorBackground
 	case "top-left":
-		return AnchorTopLeft
+		return OriginTopLeft
+	case "top-center":
+		return OriginTopCenter
 	case "top-right":
-		return AnchorTopRight
+		return OriginTopRight
+	case "left-center":
+		return OriginLeftCenter
+	case "center":
+		return OriginCenter
+	case "right-center":
+		return OriginRightCenter
 	case "bottom-left":
-		return AnchorBottomLeft
+		return OriginBottomLeft
+	case "bottom-center":
+		return OriginBottomCenter
 	case "bottom-right":
-		return AnchorBottomRight
-	case "absolute":
-		return AnchorAbsolute
+		return OriginBottomRight
 	default:
-		return AnchorCenter
+		return OriginCenter
 	}
 }
 
@@ -198,10 +178,10 @@ func (d Dimension) String() string {
 	return strconv.Itoa(d.Value)
 }
 
-// Position represents x,y coordinates (can be cells or pixels)
+// Position represents x,y offset from origin point (in pixels)
 type Position struct {
-	X Dimension
-	Y Dimension
+	X int
+	Y int
 }
 
 // ParsePosition parses position from "x,y" string
@@ -215,38 +195,37 @@ func ParsePosition(s string) (Position, error) {
 		return Position{}, fmt.Errorf("invalid position format: %s (expected x,y)", s)
 	}
 
-	x, err := ParseDimension(strings.TrimSpace(parts[0]))
+	x, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil {
-		return Position{}, fmt.Errorf("invalid x coordinate: %w", err)
+		return Position{}, fmt.Errorf("invalid x position: %w", err)
 	}
 
-	y, err := ParseDimension(strings.TrimSpace(parts[1]))
+	y, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 	if err != nil {
-		return Position{}, fmt.Errorf("invalid y coordinate: %w", err)
+		return Position{}, fmt.Errorf("invalid y position: %w", err)
 	}
 
 	return Position{X: x, Y: y}, nil
+}
+
+// String formats position as "x,y"
+func (p Position) String() string {
+	return fmt.Sprintf("%d,%d", p.X, p.Y)
 }
 
 // Config represents layer shell panel configuration
 type Config struct {
 	// Layer shell properties
 	Type        LayerType
-	Anchor      Anchor
+	Origin      Origin
 	FocusPolicy FocusPolicy
 
-	// Size (simplified to width/height)
+	// Size
 	Width  Dimension // Width in columns or pixels (e.g., 80 or "1200px")
 	Height Dimension // Height in lines or pixels (e.g., 24 or "600px")
 
-	// Position relative to anchor point
-	Position Position // Position as "x,y" (e.g., "100,50" or "200px,100px")
-
-	// Margins (now used as refinement offsets)
-	MarginTop    int
-	MarginLeft   int
-	MarginBottom int
-	MarginRight  int
+	// Position offset from origin (horizontal, vertical) in pixels
+	Position Position // Offset as "x,y" (e.g., "10,50")
 
 	// Exclusive zone
 	ExclusiveZone         int
@@ -270,10 +249,11 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		Type:          LayerShellPanel,
-		Anchor:        AnchorCenter, // Default changed from "top" to "center"
+		Origin:        OriginTopLeft,
 		FocusPolicy:   FocusNotAllowed,
 		Width:         Dimension{Value: 1, IsPixels: false},
 		Height:        Dimension{Value: 1, IsPixels: false},
+		Position:      Position{X: 0, Y: 0},
 		ExclusiveZone: -1, // Auto
 		OutputName:    "DP-2", // CRITICAL: Default to DP-2
 	}
@@ -309,7 +289,25 @@ func getMonitorResolution(monitorName string) (width, height int, err error) {
 	return 0, 0, fmt.Errorf("monitor %s not found", monitorName)
 }
 
-// calculateMargins computes final margins from anchor, position, and refinements
+// originToEdge converts Origin to kitty edge string
+func (c *Config) originToEdge() string {
+	switch c.Origin {
+	case OriginTopLeft, OriginTopCenter, OriginTopRight:
+		return "top"
+	case OriginBottomLeft, OriginBottomCenter, OriginBottomRight:
+		return "bottom"
+	case OriginLeftCenter:
+		return "left"
+	case OriginRightCenter:
+		return "right"
+	case OriginCenter:
+		return "center"
+	default:
+		return "center"
+	}
+}
+
+// calculateMargins computes final margins from origin and position offset
 func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
 	// Get monitor dimensions
 	monWidth, monHeight, err := getMonitorResolution(c.OutputName)
@@ -328,85 +326,53 @@ func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
 		panelHeight = c.Height.Value * 20 // Estimate: 20px per line
 	}
 
-	// Convert position to pixels
-	posX := c.Position.X.Value
-	if !c.Position.X.IsPixels {
-		posX = c.Position.X.Value * 10 // Estimate: 10px per column
-	}
+	// Get position offset
+	offsetX := c.Position.X
+	offsetY := c.Position.Y
 
-	posY := c.Position.Y.Value
-	if !c.Position.Y.IsPixels {
-		posY = c.Position.Y.Value * 20 // Estimate: 20px per line
-	}
+	// Calculate margins based on origin point
+	switch c.Origin {
+	case OriginTopLeft:
+		left = offsetX
+		top = offsetY
 
-	// Calculate base margins based on anchor and position
-	switch c.Anchor {
-	case AnchorAbsolute:
-		// Absolute positioning: top-left is (0,0)
-		// Position directly from top-left corner
-		left = posX
-		top = posY
+	case OriginTopCenter:
+		left = (monWidth / 2) - (panelWidth / 2) + offsetX
+		top = offsetY
 
-	case AnchorCenter:
-		// Center anchor: (0,0) is screen center
-		centerX := monWidth / 2
-		centerY := monHeight / 2
-		left = centerX + posX - (panelWidth / 2)
-		top = centerY + posY - (panelHeight / 2)
+	case OriginTopRight:
+		right = offsetX
+		top = offsetY
 
-	case AnchorTop:
-		// Top edge: y=0 at top, x=0 at left
-		left = posX
-		top = posY
+	case OriginLeftCenter:
+		left = offsetX
+		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 
-	case AnchorBottom:
-		// Bottom edge: y=0 at bottom, x=0 at left
-		left = posX
-		bottom = posY
+	case OriginCenter:
+		left = (monWidth / 2) - (panelWidth / 2) + offsetX
+		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 
-	case AnchorLeft:
-		// Left edge: x=0 at left, y=0 at top
-		left = posX
-		top = posY
+	case OriginRightCenter:
+		right = offsetX
+		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 
-	case AnchorRight:
-		// Right edge: x=0 at right, y=0 at top
-		right = posX
-		top = posY
+	case OriginBottomLeft:
+		left = offsetX
+		bottom = offsetY
 
-	case AnchorTopLeft:
-		// Top-left corner: (0,0) at corner
-		left = posX
-		top = posY
+	case OriginBottomCenter:
+		left = (monWidth / 2) - (panelWidth / 2) + offsetX
+		bottom = offsetY
 
-	case AnchorTopRight:
-		// Top-right corner: (0,0) at corner
-		right = posX
-		top = posY
-
-	case AnchorBottomLeft:
-		// Bottom-left corner: (0,0) at corner
-		left = posX
-		bottom = posY
-
-	case AnchorBottomRight:
-		// Bottom-right corner: (0,0) at corner
-		right = posX
-		bottom = posY
+	case OriginBottomRight:
+		right = offsetX
+		bottom = offsetY
 
 	default:
-		// Default to center behavior
-		centerX := monWidth / 2
-		centerY := monHeight / 2
-		left = centerX + posX - (panelWidth / 2)
-		top = centerY + posY - (panelHeight / 2)
+		// Default to center
+		left = (monWidth / 2) - (panelWidth / 2) + offsetX
+		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 	}
-
-	// Apply margin refinements
-	top += c.MarginTop
-	left += c.MarginLeft
-	bottom += c.MarginBottom
-	right += c.MarginRight
 
 	return top, left, bottom, right, nil
 }
@@ -422,13 +388,10 @@ func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 	// Panel properties via --os-panel
 	panelProps := []string{}
 
-	// Anchor (use "center" for absolute mode internally)
-	anchorStr := c.Anchor.String()
-	if c.Anchor == AnchorAbsolute {
-		anchorStr = "center"
-	}
-	if anchorStr != "" {
-		panelProps = append(panelProps, fmt.Sprintf("edge=%s", anchorStr))
+	// Edge (derived from origin)
+	edgeStr := c.originToEdge()
+	if edgeStr != "" {
+		panelProps = append(panelProps, fmt.Sprintf("edge=%s", edgeStr))
 	}
 
 	// Size
@@ -486,20 +449,8 @@ func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 func (c *Config) ToKittenArgs(component string) []string {
 	args := []string{"panel"}
 
-	// Anchor to edge mapping (use "center" for absolute mode)
-	edgeStr := c.Anchor.String()
-	if c.Anchor == AnchorAbsolute {
-		edgeStr = "center"
-	}
-
-	// Corner anchors map to their primary edge
-	switch c.Anchor {
-	case AnchorTopLeft, AnchorTopRight:
-		edgeStr = "top"
-	case AnchorBottomLeft, AnchorBottomRight:
-		edgeStr = "bottom"
-	}
-
+	// Edge (derived from origin)
+	edgeStr := c.originToEdge()
 	args = append(args, "--edge="+edgeStr)
 
 	// Layer type

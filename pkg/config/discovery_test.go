@@ -19,7 +19,7 @@ func TestDiscoverDirectoryPrism(t *testing.T) {
 version = "1.0.0"
 path = "shine-weather"
 enabled = true
-anchor = "top-right"
+origin = "top-right"
 width = "400px"
 height = "30px"
 
@@ -47,8 +47,8 @@ license = "MIT"
 		t.Errorf("Expected version '1.0.0', got '%s'", prism.Config.Version)
 	}
 
-	if prism.Config.Anchor != "top-right" {
-		t.Errorf("Expected anchor 'top-right', got '%s'", prism.Config.Anchor)
+	if prism.Config.Origin != "top-right" {
+		t.Errorf("Expected origin 'top-right', got '%s'", prism.Config.Origin)
 	}
 
 	// Verify metadata was loaded
@@ -74,7 +74,7 @@ func TestDiscoverStandalonePrism(t *testing.T) {
 version = "1.0.0"
 path = "shine-clock"
 enabled = true
-anchor = "top-right"
+origin = "top-right"
 width = "150px"
 height = "30px"
 
@@ -132,7 +132,7 @@ enabled = true
 version = "2.0.0"
 path = "shine-spotify"
 enabled = false
-anchor = "bottom"
+origin = "bottom"
 `
 	os.WriteFile(filepath.Join(spotifyDir, "prism.toml"), []byte(spotifyManifest), 0644)
 
@@ -140,7 +140,7 @@ anchor = "bottom"
 	clockConfig := `name = "clock"
 version = "1.0.0"
 enabled = true
-anchor = "top-right"
+origin = "top-right"
 width = "150px"
 `
 	os.WriteFile(filepath.Join(tmpDir, "clock.toml"), []byte(clockConfig), 0644)
@@ -173,8 +173,8 @@ width = "150px"
 		t.Errorf("weather version mismatch")
 	}
 
-	if discovered["spotify"].Config.Anchor != "bottom" {
-		t.Errorf("spotify anchor mismatch")
+	if discovered["spotify"].Config.Origin != "bottom" {
+		t.Errorf("spotify origin mismatch")
 	}
 
 	if discovered["clock"].Config.Width.(string) != "150px" {
@@ -189,7 +189,7 @@ func TestMergePrismConfigs(t *testing.T) {
 		Version: "1.0.0",
 		Path:    "shine-test",
 		Enabled: false,
-		Anchor:  "top",
+		Origin:  "top",
 		Width:   "200px",
 		Height:  "50px",
 		Metadata: map[string]interface{}{
@@ -204,7 +204,7 @@ func TestMergePrismConfigs(t *testing.T) {
 		Name:    "test",
 		Enabled: true,
 		Width:   "300px",
-		Anchor:  "bottom",
+		Origin:  "bottom",
 		Metadata: map[string]interface{}{
 			"should": "be ignored",
 		},
@@ -222,8 +222,8 @@ func TestMergePrismConfigs(t *testing.T) {
 		t.Errorf("Expected width='300px' from user config, got '%v'", merged.Width)
 	}
 
-	if merged.Anchor != "bottom" {
-		t.Errorf("Expected anchor='bottom' from user config, got '%s'", merged.Anchor)
+	if merged.Origin != "bottom" {
+		t.Errorf("Expected origin='bottom' from user config, got '%s'", merged.Origin)
 	}
 
 	// Prism source should provide defaults

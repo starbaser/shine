@@ -117,32 +117,26 @@ func TestParsePosition(t *testing.T) {
 			name:  "integer coordinates",
 			input: "100,50",
 			want: Position{
-				X: Dimension{Value: 100, IsPixels: false},
-				Y: Dimension{Value: 50, IsPixels: false},
+				X: 100,
+				Y: 50,
 			},
 		},
 		{
-			name:  "pixel coordinates",
-			input: "200px,100px",
-			want: Position{
-				X: Dimension{Value: 200, IsPixels: true},
-				Y: Dimension{Value: 100, IsPixels: true},
-			},
+			name:      "pixel coordinates should fail",
+			input:     "200px,100px",
+			wantError: true,
 		},
 		{
-			name:  "mixed coordinates",
-			input: "100,50px",
-			want: Position{
-				X: Dimension{Value: 100, IsPixels: false},
-				Y: Dimension{Value: 50, IsPixels: true},
-			},
+			name:      "mixed coordinates should fail",
+			input:     "100,50px",
+			wantError: true,
 		},
 		{
 			name:  "coordinates with spaces",
 			input: "100 , 50",
 			want: Position{
-				X: Dimension{Value: 100, IsPixels: false},
-				Y: Dimension{Value: 50, IsPixels: false},
+				X: 100,
+				Y: 50,
 			},
 		},
 		{
@@ -187,63 +181,55 @@ func TestParsePosition(t *testing.T) {
 	}
 }
 
-func TestParseAnchor(t *testing.T) {
+func TestParseOrigin(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  Anchor
+		want  Origin
 	}{
-		{"top", "top", AnchorTop},
-		{"bottom", "bottom", AnchorBottom},
-		{"left", "left", AnchorLeft},
-		{"right", "right", AnchorRight},
-		{"center", "center", AnchorCenter},
-		{"none", "none", AnchorNone},
-		{"center-sized", "center-sized", AnchorCenterSized},
-		{"background", "background", AnchorBackground},
-		{"top-left", "top-left", AnchorTopLeft},
-		{"top-right", "top-right", AnchorTopRight},
-		{"bottom-left", "bottom-left", AnchorBottomLeft},
-		{"bottom-right", "bottom-right", AnchorBottomRight},
-		{"absolute", "absolute", AnchorAbsolute},
-		{"invalid", "invalid", AnchorCenter}, // Default
+		{"top-left", "top-left", OriginTopLeft},
+		{"top-center", "top-center", OriginTopCenter},
+		{"top-right", "top-right", OriginTopRight},
+		{"left-center", "left-center", OriginLeftCenter},
+		{"center", "center", OriginCenter},
+		{"right-center", "right-center", OriginRightCenter},
+		{"bottom-left", "bottom-left", OriginBottomLeft},
+		{"bottom-center", "bottom-center", OriginBottomCenter},
+		{"bottom-right", "bottom-right", OriginBottomRight},
+		{"invalid", "invalid", OriginCenter}, // Default
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ParseAnchor(tt.input)
+			got := ParseOrigin(tt.input)
 			if got != tt.want {
-				t.Errorf("ParseAnchor(%q) = %v, want %v", tt.input, got, tt.want)
+				t.Errorf("ParseOrigin(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestAnchorString(t *testing.T) {
+func TestOriginString(t *testing.T) {
 	tests := []struct {
-		anchor Anchor
+		origin Origin
 		want   string
 	}{
-		{AnchorTop, "top"},
-		{AnchorBottom, "bottom"},
-		{AnchorLeft, "left"},
-		{AnchorRight, "right"},
-		{AnchorCenter, "center"},
-		{AnchorNone, "none"},
-		{AnchorCenterSized, "center-sized"},
-		{AnchorBackground, "background"},
-		{AnchorTopLeft, "top-left"},
-		{AnchorTopRight, "top-right"},
-		{AnchorBottomLeft, "bottom-left"},
-		{AnchorBottomRight, "bottom-right"},
-		{AnchorAbsolute, "absolute"},
+		{OriginTopLeft, "top-left"},
+		{OriginTopCenter, "top-center"},
+		{OriginTopRight, "top-right"},
+		{OriginLeftCenter, "left-center"},
+		{OriginCenter, "center"},
+		{OriginRightCenter, "right-center"},
+		{OriginBottomLeft, "bottom-left"},
+		{OriginBottomCenter, "bottom-center"},
+		{OriginBottomRight, "bottom-right"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := tt.anchor.String()
+			got := tt.origin.String()
 			if got != tt.want {
-				t.Errorf("Anchor.String() = %q, want %q", got, tt.want)
+				t.Errorf("Origin.String() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -252,8 +238,8 @@ func TestAnchorString(t *testing.T) {
 func TestNewConfig(t *testing.T) {
 	cfg := NewConfig()
 
-	if cfg.Anchor != AnchorCenter {
-		t.Errorf("NewConfig().Anchor = %v, want %v", cfg.Anchor, AnchorCenter)
+	if cfg.Origin != OriginTopLeft {
+		t.Errorf("NewConfig().Origin = %v, want %v", cfg.Origin, OriginTopLeft)
 	}
 
 	if cfg.OutputName != "DP-2" {
@@ -292,10 +278,10 @@ func TestFocusPolicyParsing(t *testing.T) {
 	}
 }
 
-func TestToKittenArgs_AbsoluteAnchor(t *testing.T) {
+func TestToKittenArgs_Center(t *testing.T) {
 	cfg := &Config{
 		Type:       LayerShellPanel,
-		Anchor:     AnchorAbsolute,
+		Origin:     OriginCenter,
 		Width:      Dimension{Value: 200, IsPixels: true},
 		Height:     Dimension{Value: 100, IsPixels: true},
 		OutputName: "DP-2",
@@ -311,7 +297,7 @@ func TestToKittenArgs_AbsoluteAnchor(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("ToKittenArgs() with absolute anchor should include --edge=center, got %v", args)
+		t.Errorf("ToKittenArgs() with center origin should include --edge=center, got %v", args)
 	}
 
 	foundWidth := false
@@ -335,7 +321,7 @@ func TestToKittenArgs_AbsoluteAnchor(t *testing.T) {
 func TestToKittenArgs_TopRightCorner(t *testing.T) {
 	cfg := &Config{
 		Type:       LayerShellPanel,
-		Anchor:     AnchorTopRight,
+		Origin:     OriginTopRight,
 		Width:      Dimension{Value: 150, IsPixels: true},
 		Height:     Dimension{Value: 30, IsPixels: true},
 		OutputName: "DP-2",
@@ -351,14 +337,14 @@ func TestToKittenArgs_TopRightCorner(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("ToKittenArgs() with top-right anchor should include --edge=top, got %v", args)
+		t.Errorf("ToKittenArgs() with top-right origin should include --edge=top, got %v", args)
 	}
 }
 
 func TestToKittenArgs_StandardFlags(t *testing.T) {
 	cfg := &Config{
 		Type:             LayerShellPanel,
-		Anchor:           AnchorTop,
+		Origin:           OriginTopCenter,
 		Width:            Dimension{Value: 80, IsPixels: false},
 		Height:           Dimension{Value: 1, IsPixels: false},
 		FocusPolicy:      FocusOnDemand,
@@ -404,7 +390,7 @@ func TestToKittenArgs_StandardFlags(t *testing.T) {
 func TestToKittenArgs_PixelDimensions(t *testing.T) {
 	cfg := &Config{
 		Type:       LayerShellPanel,
-		Anchor:     AnchorBottom,
+		Origin:     OriginBottomCenter,
 		Width:      Dimension{Value: 600, IsPixels: true},
 		Height:     Dimension{Value: 120, IsPixels: true},
 		OutputName: "DP-2",
@@ -434,7 +420,7 @@ func TestToKittenArgs_PixelDimensions(t *testing.T) {
 func TestToRemoteControlArgs(t *testing.T) {
 	cfg := &Config{
 		Type:        LayerShellPanel,
-		Anchor:      AnchorCenter,
+		Origin:      OriginCenter,
 		Width:       Dimension{Value: 1200, IsPixels: true},
 		Height:      Dimension{Value: 600, IsPixels: true},
 		FocusPolicy: FocusExclusive,
