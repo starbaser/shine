@@ -17,7 +17,11 @@ func main() {
 	// Set window title using ANSI escape sequence
 	fmt.Print("\033]0;shine-sysinfo\007")
 
-	p := tea.NewProgram(initialModel())
+	// Use alt screen mode to take over the full terminal
+	p := tea.NewProgram(
+		initialModel(),
+		tea.WithAltScreen(),
+	)
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)

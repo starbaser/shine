@@ -54,6 +54,9 @@
 
   # Shell welcome message
   enterShell = ''
+    mkdir -p bin
+    export PATH="$DEVENV_ROOT/bin:$PATH"
+
     echo "🚀 Go $(go version | cut -d' ' -f3) development environment"
     echo ""
     echo "Available commands:"
@@ -61,8 +64,6 @@
     echo "  devenv tasks run   - Run tasks"
     echo "  devenv test        - Run tests"
     echo ""
-
-    mkdir -p bin
   '';
 
   # Git hooks for code quality
