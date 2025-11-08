@@ -14,8 +14,8 @@ import (
 
 // ipcCommand represents a command sent via IPC
 type ipcCommand struct {
-	Action string `json:"action"` // "swap", "status", "stop"
-	Prism  string `json:"prism"`  // Prism name for swap action
+	Action string `json:"action"` // "start", "kill", "status", "stop"
+	Prism  string `json:"prism"`  // Prism name for start/kill action
 }
 
 // ipcResponse represents a response from IPC
@@ -23,6 +23,20 @@ type ipcResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
+}
+
+// statusResponse represents the status command response
+type statusResponse struct {
+	Foreground string        `json:"foreground"`
+	Background []string      `json:"background"`
+	Prisms     []prismStatus `json:"prisms"`
+}
+
+// prismStatus represents individual prism status
+type prismStatus struct {
+	Name  string `json:"name"`
+	PID   int    `json:"pid"`
+	State string `json:"state"` // "foreground" or "background"
 }
 
 // ipcServer manages the Unix socket IPC server
@@ -123,8 +137,10 @@ func (s *ipcServer) handleConnection(conn net.Conn) {
 
 	// Process command
 	switch cmd.Action {
-	case "swap":
-		s.handleSwap(conn, cmd)
+	case "start":
+		s.handleStart(conn, cmd)
+	case "kill":
+		s.handleKill(conn, cmd)
 	case "status":
 		s.handleStatus(conn)
 	case "stop":
@@ -134,33 +150,70 @@ func (s *ipcServer) handleConnection(conn net.Conn) {
 	}
 }
 
-// handleSwap processes a hot-swap command
-func (s *ipcServer) handleSwap(conn net.Conn, cmd ipcCommand) {
+// handleStart processes a start command (idempotent launch/resume)
+func (s *ipcServer) handleStart(conn net.Conn, cmd ipcCommand) {
 	if cmd.Prism == "" {
-		s.sendError(conn, "prism name required for swap action")
+		s.sendError(conn, "prism name required for start action")
 		return
 	}
 
-	log.Printf("IPC: Received swap request to %s", cmd.Prism)
+	log.Printf("IPC: Received start request for %s", cmd.Prism)
 
-	if err := s.supervisor.hotSwap(cmd.Prism); err != nil {
-		s.sendError(conn, fmt.Sprintf("swap failed: %v", err))
+	if err := s.supervisor.start(cmd.Prism); err != nil {
+		s.sendError(conn, fmt.Sprintf("start failed: %v", err))
 		return
 	}
 
-	s.sendSuccess(conn, "swap initiated", nil)
+	s.sendSuccess(conn, "prism started/resumed", nil)
+}
+
+// handleKill processes a kill command
+func (s *ipcServer) handleKill(conn net.Conn, cmd ipcCommand) {
+	if cmd.Prism == "" {
+		s.sendError(conn, "prism name required for kill action")
+		return
+	}
+
+	log.Printf("IPC: Received kill request for %s", cmd.Prism)
+
+	if err := s.supervisor.killPrism(cmd.Prism); err != nil {
+		s.sendError(conn, fmt.Sprintf("kill failed: %v", err))
+		return
+	}
+
+	s.sendSuccess(conn, "prism killed", nil)
 }
 
 // handleStatus processes a status query
 func (s *ipcServer) handleStatus(conn net.Conn) {
 	s.supervisor.mu.Lock()
-	currentPrism := s.supervisor.currentPrism
-	currentPid := s.supervisor.currentPid
-	s.supervisor.mu.Unlock()
+	defer s.supervisor.mu.Unlock()
 
-	data := map[string]any{
-		"prism": currentPrism,
-		"pid":   currentPid,
+	// Build status response
+	foreground := ""
+	background := []string{}
+	prisms := []prismStatus{}
+
+	for i, p := range s.supervisor.prismList {
+		state := "background"
+		if i == 0 {
+			state = "foreground"
+			foreground = p.name
+		} else {
+			background = append(background, p.name)
+		}
+
+		prisms = append(prisms, prismStatus{
+			Name:  p.name,
+			PID:   p.pid,
+			State: state,
+		})
+	}
+
+	data := statusResponse{
+		Foreground: foreground,
+		Background: background,
+		Prisms:     prisms,
 	}
 
 	s.sendSuccess(conn, "status ok", data)

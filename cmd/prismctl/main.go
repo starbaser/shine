@@ -31,9 +31,10 @@ IPC Socket:
   /run/user/<uid>/shine/prism-<component>.<<pid>.sock
 
 IPC Commands:
-  {"action":"swap","prism":"shine-spotify"}  # Hot-swap to new prism
-  {"action":"status"}                        # Query current status
-  {"action":"stop"}                          # Graceful shutdown
+  {"action":"start","prism":"shine-spotify"}  # Start/resume prism (idempotent)
+  {"action":"kill","prism":"shine-clock"}     # Kill prism (auto-resumes next)
+  {"action":"status"}                         # Query current status
+  {"action":"stop"}                           # Graceful shutdown
 
 For more information, see the Shine documentation.
 `

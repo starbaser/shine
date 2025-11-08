@@ -10,16 +10,18 @@ usage() {
 Usage: $0 <socket-name> <action> [prism-name]
 
 Commands:
-  $0 <socket> swap <prism-name>  # Hot-swap to new prism
-  $0 <socket> status              # Query current status
-  $0 <socket> stop                # Stop prismctl
+  $0 <socket> start <prism-name>  # Start/resume prism (idempotent)
+  $0 <socket> kill <prism-name>   # Kill prism (auto-resumes next)
+  $0 <socket> status               # Query current status
+  $0 <socket> stop                 # Stop prismctl
 
 Socket name format: prism-<component>.<pid>.sock
 
 Examples:
-  $0 prism-clock.12345.sock swap shine-sysinfo
-  $0 prism-clock.12345.sock status
-  $0 prism-clock.12345.sock stop
+  $0 prism-test-panel.12345.sock start shine-spotify
+  $0 prism-test-panel.12345.sock kill shine-clock
+  $0 prism-test-panel.12345.sock status
+  $0 prism-test-panel.12345.sock stop
 
 List available sockets:
   ls -la $SOCKET_DIR/
@@ -45,12 +47,19 @@ if [ ! -S "$SOCKET_PATH" ]; then
 fi
 
 case "$ACTION" in
-    swap)
+    start)
         if [ -z "$PRISM" ]; then
-            echo "Error: prism name required for swap action" >&2
+            echo "Error: prism name required for start action" >&2
             exit 1
         fi
-        CMD="{\"action\":\"swap\",\"prism\":\"$PRISM\"}"
+        CMD="{\"action\":\"start\",\"prism\":\"$PRISM\"}"
+        ;;
+    kill)
+        if [ -z "$PRISM" ]; then
+            echo "Error: prism name required for kill action" >&2
+            exit 1
+        fi
+        CMD="{\"action\":\"kill\",\"prism\":\"$PRISM\"}"
         ;;
     status)
         CMD="{\"action\":\"status\"}"

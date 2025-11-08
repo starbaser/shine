@@ -23,7 +23,11 @@ func main() {
 	// \007 is BEL (bell character)
 	fmt.Print("\033]0;shine-chat\007")
 
-	p := tea.NewProgram(initialModel())
+	// Use alt screen mode to take over the full terminal
+	p := tea.NewProgram(
+		initialModel(),
+		tea.WithAltScreen(),
+	)
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
