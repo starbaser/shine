@@ -122,13 +122,44 @@ echo '{"action":"status"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
 echo '{"action":"start","prism":"shine-clock"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
 ```
 
+### Help System Testing
+
+```bash
+# Test human-readable help
+shine help start
+shine help list
+shine help categories
+
+# Test JSON output (for tooling integration)
+shine help start --json
+shine help --json names
+shine help --json categories
+
+# Test shell completion
+source examples/completion.bash
+shine <TAB>
+shine help <TAB>
+```
+
 ## Code Organization
 
 ### Package Structure
 
 ```
 cmd/
-  shine/          # User CLI (commands.go, output.go, main.go)
+  shine/          # User CLI
+    main.go         # CLI entry point and command routing
+    commands.go     # Command implementations (start, stop, status, etc.)
+    output.go       # Terminal output formatting
+    help.go         # Help rendering and display logic
+    help_metadata.go # Structured help metadata and registry
+    help/           # Markdown help content
+      usage.md      # Main help page
+      start.md      # Per-command help pages
+      stop.md
+      status.md
+      reload.md
+      logs.md
   shinectl/       # Service manager (config.go, ipc_client.go, panel_manager.go, main.go)
   prismctl/       # Panel supervisor (supervisor.go, pty_manager.go, ipc.go, terminal.go, signals.go)
   shine-*/        # Example prisms (chat, clock, bar, sysinfo)
@@ -145,6 +176,35 @@ pkg/
 **pkg/prism/manager.go**: Prism lifecycle (Launch, Stop, Reload, Health)
 **pkg/panel/manager.go**: Kitty panel spawning via remote control API
 **cmd/prismctl/supervisor.go**: Process supervisor with suspend/resume and MRU
+**cmd/shine/help_metadata.go**: Help system registry and metadata structures
+**cmd/shine/help.go**: Help rendering (Glamour), JSON output, topic generation
+
+### Help System Architecture
+
+The CLI help system uses a **hybrid approach**:
+
+**Markdown Files** (cmd/shine/help/*.md)
+- Long-form content with examples and troubleshooting
+- Embedded at compile-time via `//go:embed`
+- Rendered beautifully with Glamour
+
+**Structured Metadata** (help_metadata.go)
+- `CommandHelp` struct with name, category, synopsis, usage, related commands
+- `helpRegistry` map for centralized command metadata
+- Enables programmatic access and multiple output formats
+
+**Multiple Output Formats**
+- Human-readable: Glamour-rendered markdown (`shine help start`)
+- Listings: Generated from metadata (`shine help list`, `shine help categories`)
+- Machine-readable: JSON output (`shine help start --json`)
+
+**Use Cases**
+- User documentation: Rich terminal help with examples
+- Shell completion: `shine help --json names` provides command list
+- IDE integration: JSON metadata for hover text and autocomplete
+- Future: Man page generation, HTML docs, interactive TUI help browser
+
+See `docs/HELP-SYSTEM.md` for complete architecture documentation and integration examples.
 
 ### Configuration System
 
@@ -350,8 +410,11 @@ prismctl preserves terminal state when suspending:
 - **docs/QUICKSTART.md**: 5-minute getting started guide
 - **docs/PHASE2-3-IMPLEMENTATION.md**: Detailed implementation report for Phase 2 & 3
 - **docs/configuration.md**: Complete configuration reference
+- **docs/HELP-SYSTEM.md**: Help system architecture and integration guide
 - **examples/shine.toml**: Fully commented example config
 - **examples/prism.toml**: Prism configuration example
+- **examples/completion.zsh**: zsh shell completion script
+- **examples/completion.bash**: bash shell completion script
 - **docs/llms/**: LLM-optimized documentation (Charm ecosystem, Hyprland, etc.)
 
 ## Known Limitations

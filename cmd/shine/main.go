@@ -7,13 +7,9 @@ import (
 
 const version = "0.2.0"
 
-func usage() {
-	fmt.Print(renderHelp(usageHelp))
-}
-
 func main() {
 	if len(os.Args) < 2 {
-		usage()
+		showHelp("")
 		os.Exit(1)
 	}
 
@@ -22,10 +18,32 @@ func main() {
 	// Handle flags
 	switch command {
 	case "-h", "--help":
-		usage()
+		showHelp("")
 		return
 	case "-v", "--version":
 		fmt.Printf("shine v%s\n", version)
+		return
+	case "help":
+		// Check for --json flag
+		jsonOutput := false
+		topic := ""
+
+		for i := 2; i < len(os.Args); i++ {
+			if os.Args[i] == "--json" {
+				jsonOutput = true
+			} else if topic == "" {
+				topic = os.Args[i]
+			}
+		}
+
+		if jsonOutput {
+			if err := helpJSON(topic); err != nil {
+				Error(err.Error())
+				os.Exit(1)
+			}
+		} else {
+			showHelp(topic)
+		}
 		return
 	}
 
@@ -54,7 +72,7 @@ func main() {
 	default:
 		Error(fmt.Sprintf("Unknown command: %s", command))
 		fmt.Println()
-		usage()
+		showHelp("")
 		os.Exit(1)
 	}
 

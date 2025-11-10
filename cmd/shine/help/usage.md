@@ -15,6 +15,7 @@ shine <command> [arguments]
 - `reload` - Reload configuration and update panels
 - `status` - Show status of all panels
 - `logs [panel-id]` - View logs (all or specific panel)
+- `help [topic]` - Show detailed help for a command or topic
 
 ## Options
 
@@ -46,6 +47,19 @@ shine logs shinectl
 Stop all panels:
 ```bash
 shine stop
+```
+
+Get detailed help for a command:
+```bash
+shine help start
+shine help status
+```
+
+List all available commands:
+```bash
+shine help list       # Detailed list with descriptions
+shine help topics     # Quick topic overview
+shine help categories # Commands organized by category
 ```
 
 ## Configuration
