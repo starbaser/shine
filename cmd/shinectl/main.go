@@ -14,35 +14,38 @@ import (
 const version = "0.1.0"
 
 func usage() {
-	fmt.Printf("shinectl v%s - Shine service manager\n\n", version)
-	fmt.Println("Usage: shinectl [options]")
-	fmt.Println()
-	fmt.Println("Options:")
-	fmt.Println("  -config PATH    Path to prism.toml (default: ~/.config/shine/prism.toml)")
-	fmt.Println("  -version        Print version and exit")
-	fmt.Println()
-	fmt.Println("Description:")
-	fmt.Println("  shinectl is the service manager that spawns and manages prismctl instances")
-	fmt.Println("  in Kitty panels according to the prism.toml configuration.")
-	fmt.Println()
-	fmt.Println("Signals:")
-	fmt.Println("  SIGHUP          Reload configuration and update panels")
-	fmt.Println("  SIGTERM/SIGINT  Graceful shutdown")
-	fmt.Println()
-	fmt.Println("Examples:")
-	fmt.Println("  shinectl")
-	fmt.Println("  shinectl -config ~/.config/shine/my-prism.toml")
+	showHelp("")
 }
 
 func main() {
 	// Parse flags
 	configPath := flag.String("config", "", "Path to prism.toml")
 	showVersion := flag.Bool("version", false, "Print version and exit")
+	helpTopic := flag.String("help", "", "Show help for a topic")
+	jsonOutput := flag.Bool("json", false, "Output help in JSON format")
 	flag.Usage = usage
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Printf("shinectl v%s\n", version)
+		os.Exit(0)
+	}
+
+	// Handle help command
+	if *helpTopic != "" || flag.NArg() > 0 && flag.Arg(0) == "help" {
+		topic := *helpTopic
+		if topic == "" && flag.NArg() > 1 {
+			topic = flag.Arg(1)
+		}
+
+		if *jsonOutput {
+			if err := helpJSON(topic); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			showHelp(topic)
+		}
 		os.Exit(0)
 	}
 

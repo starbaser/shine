@@ -30,40 +30,36 @@ func setupLogging() error {
 	return nil
 }
 
-const usage = `prismctl - Supervisor for Shine prism processes
-
-Usage:
-  prismctl <prism-name> [component-name]
-
-Arguments:
-  prism-name      Name of the prism binary to run (e.g., shine-clock)
-  component-name  Optional component identifier for IPC socket naming (default: same as prism-name)
-
-Description:
-  prismctl manages the lifecycle of a single prism process, providing:
-  - Terminal state management and cleanup
-  - Hot-swap capability via IPC
-  - Signal handling (SIGCHLD, SIGTERM, SIGWINCH)
-  - Crash recovery
-
-Examples:
-  prismctl shine-clock
-  prismctl shine-spotify music-panel
-
-IPC Socket:
-  The IPC socket is created at:
-  /run/user/<uid>/shine/prism-<component>.<<pid>.sock
-
-IPC Commands:
-  {"action":"start","prism":"shine-spotify"}  # Start/resume prism (idempotent)
-  {"action":"kill","prism":"shine-clock"}     # Kill prism (auto-resumes next)
-  {"action":"status"}                         # Query current status
-  {"action":"stop"}                           # Graceful shutdown
-
-For more information, see the Shine documentation.
-`
 
 func main() {
+	// Handle help requests before anything else
+	if len(os.Args) >= 2 {
+		arg := os.Args[1]
+		if arg == "-h" || arg == "--help" {
+			showHelp("")
+			os.Exit(0)
+		}
+		if arg == "help" {
+			topic := ""
+			if len(os.Args) >= 3 {
+				topic = os.Args[2]
+			}
+			showHelp(topic)
+			os.Exit(0)
+		}
+		if arg == "--json" && len(os.Args) >= 3 && os.Args[2] == "help" {
+			topic := ""
+			if len(os.Args) >= 4 {
+				topic = os.Args[3]
+			}
+			if err := helpJSON(topic); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
+
 	// Setup logging to file
 	if err := setupLogging(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to setup logging: %v\n", err)
@@ -72,7 +68,7 @@ func main() {
 
 	// Parse arguments
 	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stderr, usage)
+		showHelp("")
 		os.Exit(1)
 	}
 
@@ -82,12 +78,6 @@ func main() {
 	// Optional component name for socket identification
 	if len(os.Args) >= 3 {
 		componentName = os.Args[2]
-	}
-
-	// Show help if requested
-	if prismName == "-h" || prismName == "--help" || prismName == "help" {
-		fmt.Print(usage)
-		os.Exit(0)
 	}
 
 	log.Printf("prismctl starting (prism: %s, component: %s)", prismName, componentName)
