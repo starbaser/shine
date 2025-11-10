@@ -27,7 +27,7 @@ shine-* prisms (Bubble Tea TUIs)
 **shine**: User-facing CLI (`start`, `stop`, `reload`, `status`, `logs`)
 **shinectl**: Background service that spawns/monitors panels, reads `~/.config/shine/prism.toml`
 **prismctl**: Panel supervisor with suspend/resume, MRU ordering, crash recovery
-**Prisms**: Individual TUI applications (e.g., `shine-clock`, `shine-chat`, `shine-bar`)
+**Prisms**: Individual TUI applications (e.g., `clock`, `chat`, `bar`)
 
 ### Critical Behaviors
 
@@ -65,9 +65,9 @@ go build -o bin/shinectl ./cmd/shinectl
 go build -o bin/prismctl ./cmd/prismctl
 
 # Build specific prism
-go build -o bin/shine-chat ./cmd/shine-chat
-go build -o bin/shine-clock ./cmd/shine-clock
-go build -o bin/shine-bar ./cmd/shine-bar
+go build -o bin/chat ./cmd/prisms/chat
+go build -o bin/clock ./cmd/prisms/clock
+go build -o bin/bar ./cmd/prisms/bar
 ```
 
 ### Testing
@@ -109,17 +109,17 @@ shine stop
 
 ```bash
 # Test prism standalone (requires TTY)
-./bin/shine-chat
+./bin/chat
 
 # Test prismctl with a prism
-./bin/prismctl panel-test shine-clock
+./bin/prismctl panel-test clock
 
 # Hot-reload config
 pkill -HUP shinectl
 
 # Test IPC manually
 echo '{"action":"status"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
-echo '{"action":"start","prism":"shine-clock"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
+echo '{"action":"start","prism":"clock"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
 ```
 
 ### Help System Testing
@@ -162,7 +162,11 @@ cmd/
       logs.md
   shinectl/       # Service manager (config.go, ipc_client.go, panel_manager.go, main.go)
   prismctl/       # Panel supervisor (supervisor.go, pty_manager.go, ipc.go, terminal.go, signals.go)
-  shine-*/        # Example prisms (chat, clock, bar, sysinfo)
+  prisms/         # Example prisms
+    bar/          # Status bar prism
+    chat/         # Chat panel prism
+    clock/        # Clock widget prism
+    sysinfo/      # System info widget prism
 
 pkg/
   config/         # Configuration system (types.go, loader.go, discovery.go, watcher.go)
@@ -244,14 +248,14 @@ pkill -HUP shinectl
 
 ```bash
 # Edit prism code
-vim cmd/shine-clock/main.go
+vim cmd/prisms/clock/main.go
 
 # Rebuild
-go build -o bin/shine-clock ./cmd/shine-clock
-cp bin/shine-clock ~/.local/bin/
+go build -o bin/clock ./cmd/prisms/clock
+cp bin/clock ~/.local/bin/
 
 # Hot-swap in running panel (via prismctl IPC)
-echo '{"action":"start","prism":"shine-clock"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
+echo '{"action":"start","prism":"clock"}' | nc -U /run/user/$(id -u)/shine/prism-panel-0.*.sock
 ```
 
 ### Debugging Panel Issues
@@ -267,7 +271,7 @@ ls -la /run/user/$(id -u)/shine/
 kitty @ ls
 
 # Run prism standalone to isolate issues
-./bin/shine-clock
+./bin/clock
 ```
 
 ### Configuration Hot-Reload Testing
@@ -383,15 +387,15 @@ JSON messages over Unix sockets:
 
 **Request**:
 ```json
-{"action": "start", "prism": "shine-clock"}
-{"action": "kill", "prism": "shine-clock"}
+{"action": "start", "prism": "clock"}
+{"action": "kill", "prism": "clock"}
 {"action": "status"}
 {"action": "stop"}
 ```
 
 **Response**:
 ```json
-{"success": true, "foreground": "shine-clock", "background": ["shine-chat"]}
+{"success": true, "foreground": "clock", "background": ["chat"]}
 {"success": false, "error": "prism not found"}
 ```
 
