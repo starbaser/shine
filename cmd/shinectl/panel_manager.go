@@ -77,17 +77,18 @@ func (pm *PanelManager) SpawnPanel(config *PrismEntry, componentName string) (*P
 		return existing, nil
 	}
 
-	// Build prismctl command: prismctl <prism-name> <component-name>
-	title := fmt.Sprintf("shine-%s", componentName)
+	// Convert PrismEntry to panel.Config for positioning
+	panelCfg := config.ToPanelConfig()
 
-	// Launch Kitty panel using kitten @ launch
-	// Use --type=window to create a new window (panel) in current tab
-	cmd := exec.Command(
-		"kitten", "@", "launch",
-		"--type=window",
-		"--title", title,
-		pm.prismctlBin, config.Name, componentName,
-	)
+	// Build prismctl command path with arguments
+	prismctlArgs := []string{config.Name, componentName}
+
+	// Generate kitten @ launch arguments with positioning
+	kittenArgs := panelCfg.ToRemoteControlArgs(pm.prismctlBin)
+	kittenArgs = append(kittenArgs, prismctlArgs...)
+
+	// Launch Kitty panel using kitten @ launch with os-panel positioning
+	cmd := exec.Command("kitten", kittenArgs...)
 
 	// Capture output to parse window ID
 	output, err := cmd.CombinedOutput()
@@ -280,15 +281,18 @@ func (pm *PanelManager) handlePanelCrash(panel *Panel) {
 
 // spawnPanelUnlocked is the internal spawn function (caller must hold lock)
 func (pm *PanelManager) spawnPanelUnlocked(config *PrismEntry, componentName string) (*Panel, error) {
-	// Build prismctl command
-	title := fmt.Sprintf("shine-%s", componentName)
+	// Convert PrismEntry to panel.Config for positioning
+	panelCfg := config.ToPanelConfig()
 
-	cmd := exec.Command(
-		"kitten", "@", "launch",
-		"--type=window",
-		"--title", title,
-		pm.prismctlBin, config.Name, componentName,
-	)
+	// Build prismctl command path with arguments
+	prismctlArgs := []string{config.Name, componentName}
+
+	// Generate kitten @ launch arguments with positioning
+	kittenArgs := panelCfg.ToRemoteControlArgs(pm.prismctlBin)
+	kittenArgs = append(kittenArgs, prismctlArgs...)
+
+	// Launch Kitty panel using kitten @ launch with os-panel positioning
+	cmd := exec.Command("kitten", kittenArgs...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
