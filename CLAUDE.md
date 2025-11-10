@@ -48,7 +48,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
                ┌────┴─────┐┌────┴─────┐┌────┴─────┐
                │  clock   ││  wabar   ││   app3   │ <- TUI processes (light sources)
                └──────────┘└──────────┘└──────────┘
-                 suspended    suspended   FOREGROUND
+                background   background   FOREGROUND
 ```
 
 **Flow explanation:**
@@ -57,7 +57,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. Each Kitty panel launches `prismctl` as its command (the prism supervisor)
 4. `prismctl` allocates PTYs and forks TUI child processes (light sources)
 5. The surface relays I/O between Real PTY and the active child's PTY
-6. MRU ordering: most recent child stays foreground, others suspended (SIGSTOP)
+6. MRU ordering: most recent child stays foreground, others continue running in background
 7. Hot-swap: `prismctl` can switch which light source is refracted through the surface
 
 ### Three-Tier System
@@ -81,8 +81,8 @@ User's terminal
 
 ### Critical Behaviors
 
-- **prismctl suspend/resume**: Uses SIGSTOP/SIGCONT for zero-overhead backgrounding
-- **MRU ordering**: Most recently used prism stays foreground, others suspended
+- **Background processing**: All TUI light sources continue running, only I/O relay switches
+- **MRU ordering**: Most recently used light source gets I/O relay, others continue in background
 - **Crash recovery**: Restart policies (no, on-failure, unless-stopped, always)
 - **Hot-reload**: SIGHUP to shinectl reloads config without disrupting panels
 - **IPC**: JSON over Unix sockets (`/run/user/{uid}/shine/prism-{component}.{pid}.sock`)
@@ -230,7 +230,7 @@ pkg/
 **pkg/panel/config.go**: Panel positioning logic (origin, margins, dimensions)
 **cmd/shinectl/config.go**: Hybrid config (positioning + restart policies)
 **cmd/shinectl/panel_manager.go**: Spawns Kitty panels via remote control, health monitoring
-**cmd/prismctl/supervisor.go**: Process supervisor with suspend/resume and MRU
+**cmd/prismctl/supervisor.go**: Process supervisor with surface switching and MRU
 **cmd/prismctl/surface.go**: Bidirectional I/O surface (Real PTY ↔ child PTY)
 **cmd/shine/help_metadata.go**: Help system registry and metadata structures
 **cmd/shine/help.go**: Help rendering (Glamour), JSON output, topic generation
@@ -357,7 +357,7 @@ shine status
 
 **DO NOT MODIFY** these without careful testing (from prismctl implementation):
 
-- 10ms stabilization delay after resume (SIGCONT)
+- 10ms stabilization delay after surface switch
 - 20ms shutdown grace period (SIGTERM → SIGKILL)
 - Terminal state restoration requires exact sequencing
 
@@ -463,11 +463,11 @@ JSON messages over Unix sockets:
 
 ### Terminal State Management
 
-prismctl preserves terminal state when suspending:
+prismctl preserves terminal state when switching surfaces:
 
 1. Save current terminal attributes (termios)
-2. SIGSTOP to suspend process
-3. On resume: restore attributes, SIGCONT, 10ms stabilization
+2. Reset terminal to canonical mode before switching
+3. On switch: restore attributes, sync PTY size, 10ms stabilization
 
 **CRITICAL**: Never modify terminal state outside prismctl supervisor code.
 
@@ -488,11 +488,11 @@ prismctl preserves terminal state when suspending:
 
 From architecture (Phase 4 future work):
 
-- No eviction policy - unlimited suspended prisms
+- No eviction policy - unlimited background light sources
 - No persistence - MRU list lost on prismctl restart
-- No prism tagging (pin/evict)
-- No memory limits - background prisms consume full memory
-- No per-prism logs yet (only shinectl.log)
+- No light source tagging (pin/evict)
+- No memory limits - background light sources consume full memory
+- No per-light-source logs yet (only shinectl.log)
 - Config reload requires manual SIGHUP (no `shine reload` IPC yet)
 
 ## Version Information
