@@ -8,26 +8,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Key Innovation**: No Wayland code required - Kitty handles all layer shell integration via `kitten panel`.
 
-**Current Status**: Phase 2/3 complete (prismtty architecture). Production-ready for managing multiple TUI panels.
-
 ## Core Architecture
+
+### The Optical Metaphor
+
+**Prisms** are the Kitty panels equipped with `prismctl`. Each prism can hold multiple light sources (TUI child processes) and refract one to the user at a time through its surface.
+
+- **Panel** = The Kitty layer shell window spawned by `shinectl`
+- **Prism** = Panel + `prismctl` supervisor (the refracting container)
+- **Light Sources** = TUI child processes (e.g., `clock`, `chat`, `bar`) that beam their output
+- **Surface** = The bidirectional I/O mechanism that refracts light from the active source to the user
+
+```
+┌─────────────────┐
+│  shine (CLI)    │ <- User: shine start/stop/status
+└────────┬────────┘
+         │ IPC (Unix socket: /run/user/{uid}/shine/shine-service.*.sock)
+         ↓
+┌─────────────────┐
+│    shinectl     │ <- Service manager: reads prism.toml config
+└────────┬────────┘
+         │ kitten @ launch --type=os-panel prismctl panel-0
+         ↓
+┌─────────────────┐
+│     Kitty       │ <- Layer shell panel window (positioned via --os-panel flags)
+└────────┬────────┘
+         ↓│↑ Real PTY (stdin/stdout)
+┌────────┴────────┐
+│     pty_M       │ <- Real terminal PTY master (Kitty's PTY)
+└────────┬────────┘
+         ↓│↑ Surface (bidirectional relay)
+┌────────┴────────┐      ┌──────────────┐
+│     pty_S       │<────>│  prismctl    │ <- Prism supervisor (IPC: prism-{component}.{pid}.sock)
+└─────────────────┘      └─┬────┬────┬──┘    Foreground TUI visible to user
+                    ┌──────┘    │    └──────┐
+               ┌────┴─────┐┌────┴─────┐┌────┴─────┐
+               │   PTY1   ││   PTY2   ││  *PTY3   │ <- Child PTYs (* = active/foreground)
+               └────┬─────┘└────┬─────┘└────┬─────┘
+               ┌────┴─────┐┌────┴─────┐┌────┴─────┐
+               │  clock   ││  wabar   ││   app3   │ <- TUI processes (light sources)
+               └──────────┘└──────────┘└──────────┘
+                 suspended    suspended   FOREGROUND
+```
+
+**Flow explanation:**
+1. User runs `shine start` → spawns `shinectl` in background
+2. `shinectl` reads `prism.toml` and spawns Kitty panels via remote control
+3. Each Kitty panel launches `prismctl` as its command (the prism supervisor)
+4. `prismctl` allocates PTYs and forks TUI child processes (light sources)
+5. The surface relays I/O between Real PTY and the active child's PTY
+6. MRU ordering: most recent child stays foreground, others suspended (SIGSTOP)
+7. Hot-swap: `prismctl` can switch which light source is refracted through the surface
 
 ### Three-Tier System
 
 ```
 shine (user CLI)
-  ↓
+  ↓ sends IPC commands
 shinectl (service manager)
-  ↓ spawns panels via Kitty remote control
-prismctl (panel supervisor)
-  ↓ manages process lifecycle
-prisms (Bubble Tea TUIs: bar, chat, clock, sysinfo)
+  ↓ spawns Kitty panels via remote control
+kitten panel [prismctl panel-name]
+  ↓ prismctl is the prism (container + supervisor)
+Light sources (TUI processes)
+  ↓ one source at a time is refracted through the surface
+User's terminal
 ```
 
 **shine**: User-facing CLI (`start`, `stop`, `reload`, `status`, `logs`)
-**shinectl**: Background service that spawns/monitors panels, reads `~/.config/shine/prism.toml`
-**prismctl**: Panel supervisor with suspend/resume, MRU ordering, crash recovery
-**Prisms**: Individual TUI applications (e.g., `clock`, `chat`, `bar`)
+**shinectl**: Service manager that reads config and launches `kitten panel` processes with `prismctl` as the command
+**prismctl**: The prism - supervisor that manages multiple TUI child processes (light sources) and refracts one to the user via the surface
+**Light Sources**: Individual TUI applications (e.g., `clock`, `chat`, `bar`) that run as children of prismctl
 
 ### Critical Behaviors
 
@@ -161,7 +211,7 @@ cmd/
       reload.md
       logs.md
   shinectl/       # Service manager (config.go, ipc_client.go, panel_manager.go, main.go)
-  prismctl/       # Panel supervisor (supervisor.go, pty_manager.go, ipc.go, terminal.go, signals.go)
+  prismctl/       # Panel supervisor (supervisor.go, surface.go, pty_manager.go, ipc.go, terminal.go, signals.go)
   prisms/         # Example prisms
     bar/          # Status bar prism
     chat/         # Chat panel prism
@@ -170,16 +220,18 @@ cmd/
 
 pkg/
   config/         # Configuration system (types.go, loader.go, discovery.go, watcher.go)
-  panel/          # Panel lifecycle (manager.go, config.go, remote.go)
-  prism/          # Prism management (manager.go, prism.go, manifest.go, validate.go)
+  panel/          # Panel configuration (config.go positioning logic, remote.go control helpers)
 ```
 
 ### Key Files
 
 **pkg/config/types.go**: Core config structures (`Config`, `CoreConfig`, `PrismConfig`)
-**pkg/prism/manager.go**: Prism lifecycle (Launch, Stop, Reload, Health)
-**pkg/panel/manager.go**: Kitty panel spawning via remote control API
+**pkg/config/discovery.go**: Prism discovery from configured directories (three types)
+**pkg/panel/config.go**: Panel positioning logic (origin, margins, dimensions)
+**cmd/shinectl/config.go**: Hybrid config (positioning + restart policies)
+**cmd/shinectl/panel_manager.go**: Spawns Kitty panels via remote control, health monitoring
 **cmd/prismctl/supervisor.go**: Process supervisor with suspend/resume and MRU
+**cmd/prismctl/surface.go**: Bidirectional I/O surface (Real PTY ↔ child PTY)
 **cmd/shine/help_metadata.go**: Help system registry and metadata structures
 **cmd/shine/help.go**: Help rendering (Glamour), JSON output, topic generation
 
