@@ -10,7 +10,7 @@ shine <command> [flags]
 
 ## CORE COMMANDS
 
-```
+```text
 start:      Start the shine service and enabled panels
 stop:       Stop all panels
 reload:     Reload configuration and update panels
@@ -20,14 +20,14 @@ logs:       View service and panel logs
 
 ## ADDITIONAL COMMANDS
 
-```
+```text
 help:       Show help for a command or topic
 version:    Show version information
 ```
 
 ## FLAGS
 
-```
+```text
 --help      Show help for command
 --version   Show shine version
 ```

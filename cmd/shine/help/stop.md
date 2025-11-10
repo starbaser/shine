@@ -14,7 +14,7 @@ shine stop
 
 ## FLAGS
 
-```
+```text
 --help   Show help for command
 ```
 

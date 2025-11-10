@@ -13,13 +13,13 @@ shine logs <filename>   # View specific log (last 50 lines)
 
 ## FLAGS
 
-```
+```text
 --help   Show help for command
 ```
 
 ## LOG FILES
 
-```
+```text
 shinectl.log              Service manager logs
 prismctl-{component}.log  Panel supervisor logs
 ```

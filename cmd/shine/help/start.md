@@ -12,7 +12,7 @@ shine start
 
 ## FLAGS
 
-```
+```text
 --help   Show help for command
 ```
 

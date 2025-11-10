@@ -12,7 +12,7 @@ shine status
 
 ## FLAGS
 
-```
+```text
 --help   Show help for command
 ```
 
