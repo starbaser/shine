@@ -117,7 +117,7 @@ func TestDiscoverPrisms(t *testing.T) {
 	// Create temp directory structure
 	tmpDir := t.TempDir()
 
-	// Type 1: Full package (directory with binary)
+	// Type 2: Directory with prism.toml (weather)
 	weatherDir := filepath.Join(tmpDir, "weather")
 	os.Mkdir(weatherDir, 0755)
 	weatherManifest := `name = "weather"
@@ -127,7 +127,7 @@ enabled = true
 `
 	os.WriteFile(filepath.Join(weatherDir, "prism.toml"), []byte(weatherManifest), 0644)
 
-	// Type 2: Data directory (directory without binary)
+	// Type 2: Directory with prism.toml (spotify)
 	spotifyDir := filepath.Join(tmpDir, "spotify")
 	os.Mkdir(spotifyDir, 0755)
 	spotifyManifest := `name = "spotify"

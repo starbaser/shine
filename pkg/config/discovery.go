@@ -51,7 +51,7 @@ func DiscoverPrisms(prismDirs []string, extraPaths []string) (map[string]*Discov
 		}
 
 		for _, entry := range entries {
-			// Type 1 & 2: Directory-based prisms
+			// Type 2: Directory with prism.toml
 			if entry.IsDir() {
 				prism, err := discoverDirectoryPrism(expandedDir, entry.Name(), extraPaths)
 				if err == nil && prism != nil {
@@ -79,7 +79,8 @@ func DiscoverPrisms(prismDirs []string, extraPaths []string) (map[string]*Discov
 	return discovered, nil
 }
 
-// discoverDirectoryPrism handles Type 1 (full package) and Type 2 (data directory)
+// discoverDirectoryPrism handles Type 2: directory with prism.toml
+// Binary resolution: checks prism directory first, then falls back to PATH
 func discoverDirectoryPrism(baseDir, dirName string, extraPaths []string) (*DiscoveredPrism, error) {
 	prismDir := filepath.Join(baseDir, dirName)
 	manifestPath := filepath.Join(prismDir, "prism.toml")
@@ -106,12 +107,12 @@ func discoverDirectoryPrism(baseDir, dirName string, extraPaths []string) (*Disc
 	// Resolve single-app path (for backward compatibility)
 	var resolvedPath string
 	if config.Path != "" {
-		// Check if binary is in the prism directory (Type 1: Full package)
+		// Check for bundled binary in prism directory
 		binaryPath := filepath.Join(prismDir, config.Path)
 		if isExecutable(binaryPath) {
 			resolvedPath = binaryPath
 		} else {
-			// Type 2: Data directory, binary via PATH
+			// Fall back to PATH lookup
 			resolvedPath = findInPATH(config.Path, extraPaths)
 		}
 	} else {
