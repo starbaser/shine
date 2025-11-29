@@ -1,252 +1,66 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
-	"net"
 	"os"
-	"path/filepath"
-	"strings"
-	"sync"
+	"time"
 
-	"github.com/starbased-co/shine/pkg/ipc"
+	"github.com/creachadair/jrpc2"
 	"github.com/starbased-co/shine/pkg/paths"
+	"github.com/starbased-co/shine/pkg/rpc"
 )
 
-// ipcServer manages the Unix socket IPC server
-type ipcServer struct {
-	socketPath string
-	listener   net.Listener
-	supervisor *supervisor
-	wg         sync.WaitGroup
-	stopCh     chan struct{}
-}
-
-// newIPCServer creates a new IPC server
-func newIPCServer(instance string, supervisor *supervisor) (*ipcServer, error) {
-	// Use XDG runtime directory
+// startRPCServer creates and starts the JSON-RPC 2.0 server
+func startRPCServer(instance string, supervisor *supervisor, stateMgr *StateManager) (*rpc.Server, error) {
+	// Create runtime directory
 	runtimeDir := paths.RuntimeDir()
-
-	// Create directory if needed
 	if err := os.MkdirAll(runtimeDir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create runtime directory: %w", err)
 	}
 
-	// Extract basename from instance path (handles "./test/fixtures/test-prism" -> "test-prism")
-	instanceName := filepath.Base(instance)
+	// Get socket path
+	socketPath := paths.PrismSocket(instance)
 
-	// Socket path
-	socketPath := paths.PrismSocket(instanceName)
+	// Create handler map
+	handlers := newRPCHandlers(supervisor, stateMgr)
 
-	// Remove stale socket if exists
-	_ = os.Remove(socketPath)
-
-	// Create Unix socket listener
-	listener, err := net.Listen("unix", socketPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Unix socket: %w", err)
+	// Server options with logging
+	opts := &jrpc2.ServerOptions{
+		Logger: func(text string) {
+			log.Printf("RPC: %s", text)
+		},
 	}
 
-	// Set socket permissions to user-only
-	if err := os.Chmod(socketPath, 0600); err != nil {
-		listener.Close()
-		return nil, fmt.Errorf("failed to set socket permissions: %w", err)
+	// Create RPC server
+	server := rpc.NewServer(socketPath, handlers, opts)
+
+	// Start server
+	if err := server.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start RPC server: %w", err)
 	}
 
-	log.Printf("IPC server listening on: %s", socketPath)
+	log.Printf("RPC server listening on: %s", socketPath)
 
-	return &ipcServer{
-		socketPath: socketPath,
-		listener:   listener,
-		supervisor: supervisor,
-		stopCh:     make(chan struct{}),
-	}, nil
+	return server, nil
 }
 
-// serve starts accepting IPC connections
-func (s *ipcServer) serve() {
-	s.wg.Add(1)
-	defer s.wg.Done()
-
-	for {
-		select {
-		case <-s.stopCh:
-			return
-		default:
-		}
-
-		conn, err := s.listener.Accept()
-		if err != nil {
-			select {
-			case <-s.stopCh:
-				return
-			default:
-				log.Printf("Error accepting connection: %v", err)
-				continue
-			}
-		}
-
-		// Handle connection in goroutine
-		s.wg.Add(1)
-		go s.handleConnection(conn)
-	}
-}
-
-// handleConnection processes a single IPC connection
-func (s *ipcServer) handleConnection(conn net.Conn) {
-	defer s.wg.Done()
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		s.sendError(conn, "failed to read command")
+// stopRPCServer gracefully stops the RPC server
+func stopRPCServer(server *rpc.Server) {
+	if server == nil {
 		return
 	}
 
-	// Parse command
-	var cmd ipc.Command
-	if err := json.Unmarshal([]byte(strings.TrimSpace(line)), &cmd); err != nil {
-		s.sendError(conn, fmt.Sprintf("invalid JSON: %v", err))
-		return
+	log.Printf("Stopping RPC server...")
+
+	// Create context with timeout for graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Stop(ctx); err != nil {
+		log.Printf("Warning: error stopping RPC server: %v", err)
 	}
 
-	// Process command
-	switch cmd.Action {
-	case "start":
-		s.handleStart(conn, cmd)
-	case "kill":
-		s.handleKill(conn, cmd)
-	case "status":
-		s.handleStatus(conn)
-	case "stop":
-		s.handleStop(conn)
-	default:
-		s.sendError(conn, fmt.Sprintf("unknown action: %s", cmd.Action))
-	}
-}
-
-// handleStart processes a start command (idempotent launch/resume)
-func (s *ipcServer) handleStart(conn net.Conn, cmd ipc.Command) {
-	if cmd.Prism == "" {
-		s.sendError(conn, "prism name required for start action")
-		return
-	}
-
-	log.Printf("IPC: Received start request for %s", cmd.Prism)
-
-	if err := s.supervisor.start(cmd.Prism); err != nil {
-		s.sendError(conn, fmt.Sprintf("start failed: %v", err))
-		return
-	}
-
-	s.sendSuccess(conn, "prism started/resumed", nil)
-}
-
-// handleKill processes a kill command
-func (s *ipcServer) handleKill(conn net.Conn, cmd ipc.Command) {
-	if cmd.Prism == "" {
-		s.sendError(conn, "prism name required for kill action")
-		return
-	}
-
-	log.Printf("IPC: Received kill request for %s", cmd.Prism)
-
-	if err := s.supervisor.killPrism(cmd.Prism); err != nil {
-		s.sendError(conn, fmt.Sprintf("kill failed: %v", err))
-		return
-	}
-
-	s.sendSuccess(conn, "prism killed", nil)
-}
-
-// handleStatus processes a status query
-func (s *ipcServer) handleStatus(conn net.Conn) {
-	s.supervisor.mu.Lock()
-	defer s.supervisor.mu.Unlock()
-
-	// Build status response
-	foreground := ""
-	background := []string{}
-	prisms := []ipc.PrismStatus{}
-
-	for i, p := range s.supervisor.prismList {
-		state := "background"
-		if i == 0 {
-			state = "foreground"
-			foreground = p.name
-		} else {
-			background = append(background, p.name)
-		}
-
-		prisms = append(prisms, ipc.PrismStatus{
-			Name:  p.name,
-			PID:   p.pid,
-			State: state,
-		})
-	}
-
-	data := ipc.StatusResponse{
-		Foreground: foreground,
-		Background: background,
-		Prisms:     prisms,
-	}
-
-	s.sendSuccess(conn, "status ok", data)
-}
-
-// handleStop processes a stop command
-func (s *ipcServer) handleStop(conn net.Conn) {
-	log.Printf("IPC: Received stop request")
-	s.sendSuccess(conn, "stopping", nil)
-
-	// Trigger shutdown
-	go s.supervisor.shutdown()
-}
-
-// sendSuccess sends a success response
-func (s *ipcServer) sendSuccess(conn net.Conn, message string, data any) {
-	resp := ipc.Response{
-		Success: true,
-		Message: message,
-		Data:    data,
-	}
-	s.sendResponse(conn, resp)
-}
-
-// sendError sends an error response
-func (s *ipcServer) sendError(conn net.Conn, message string) {
-	resp := ipc.Response{
-		Success: false,
-		Message: message,
-	}
-	s.sendResponse(conn, resp)
-}
-
-// sendResponse sends a JSON response
-func (s *ipcServer) sendResponse(conn net.Conn, resp ipc.Response) {
-	data, err := json.Marshal(resp)
-	if err != nil {
-		log.Printf("Error marshaling response: %v", err)
-		return
-	}
-
-	data = append(data, '\n')
-	if _, err := conn.Write(data); err != nil {
-		log.Printf("Error writing response: %v", err)
-	}
-}
-
-// stop stops the IPC server
-func (s *ipcServer) stop() {
-	close(s.stopCh)
-	s.listener.Close()
-	s.wg.Wait()
-
-	// Clean up socket file
-	_ = os.Remove(s.socketPath)
-
-	log.Printf("IPC server stopped")
+	log.Printf("RPC server stopped")
 }

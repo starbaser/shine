@@ -60,6 +60,16 @@ func PrismSocket(instance string) string {
 	return filepath.Join(RuntimeDir(), fmt.Sprintf("prism-%s.sock", instance))
 }
 
+// PrismState returns the path to a prism's mmap state file
+func PrismState(instance string) string {
+	return filepath.Join(RuntimeDir(), fmt.Sprintf("prism-%s.state", instance))
+}
+
+// ShinectlState returns the path to the shinectl mmap state file
+func ShinectlState() string {
+	return filepath.Join(RuntimeDir(), "shinectl.state")
+}
+
 // DefaultConfigPath returns the default configuration file path
 func DefaultConfigPath() string {
 	return filepath.Join(ConfigDir(), "shine.toml")

@@ -139,10 +139,7 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		Core: &CoreConfig{
 			Path: []string{
-				"~/.local/share/shine/bin",
-				"~/.config/shine/bin",
 				"~/.config/shine/prisms",
-				"/usr/lib/shine/bin",
 			},
 		},
 		Prisms: map[string]*PrismConfig{},

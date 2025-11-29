@@ -1,0 +1,176 @@
+package main
+
+import (
+	"context"
+	"log"
+	"sync"
+	"time"
+
+	"github.com/starbased-co/shine/pkg/paths"
+	"github.com/starbased-co/shine/pkg/rpc"
+)
+
+// NotificationManager handles bidirectional notifications to shinectl
+// with graceful degradation when shinectl is unavailable
+type NotificationManager struct {
+	mu         sync.Mutex
+	client     *rpc.ShinectlClient
+	instance   string
+	connected  bool
+	reconnectC chan struct{}
+	stopC      chan struct{}
+}
+
+// newNotificationManager creates a notification manager
+func newNotificationManager(instance string) *NotificationManager {
+	nm := &NotificationManager{
+		instance:   instance,
+		connected:  false,
+		reconnectC: make(chan struct{}, 1),
+		stopC:      make(chan struct{}),
+	}
+
+	// Start background connection loop
+	go nm.connectionLoop()
+
+	return nm
+}
+
+// connectionLoop attempts to connect and reconnect to shinectl
+func (nm *NotificationManager) connectionLoop() {
+	backoff := time.Second
+	maxBackoff := 30 * time.Second
+
+	for {
+		select {
+		case <-nm.stopC:
+			return
+		case <-nm.reconnectC:
+			// Connection attempt triggered
+		case <-time.After(backoff):
+			// Periodic retry if disconnected
+		}
+
+		nm.mu.Lock()
+		connected := nm.connected
+		nm.mu.Unlock()
+
+		if connected {
+			// Already connected, reset backoff and wait
+			backoff = time.Second
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		// Attempt connection
+		sockPath := paths.ShinectlSocket()
+		client, err := rpc.NewShinectlClient(sockPath, rpc.WithTimeout(2*time.Second))
+
+		nm.mu.Lock()
+		if err != nil {
+			// Connection failed - increase backoff
+			if backoff < maxBackoff {
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+			}
+			log.Printf("Notification: failed to connect to shinectl: %v (retry in %v)", err, backoff)
+			nm.client = nil
+			nm.connected = false
+		} else {
+			// Connection successful
+			log.Printf("Notification: connected to shinectl at %s", sockPath)
+			nm.client = client
+			nm.connected = true
+			backoff = time.Second
+		}
+		nm.mu.Unlock()
+	}
+}
+
+// tryReconnect signals the connection loop to attempt reconnection
+func (nm *NotificationManager) tryReconnect() {
+	select {
+	case nm.reconnectC <- struct{}{}:
+	default:
+	}
+}
+
+// sendNotification sends a notification with graceful failure
+func (nm *NotificationManager) sendNotification(fn func(context.Context, *rpc.ShinectlClient) error) {
+	nm.mu.Lock()
+	client := nm.client
+	connected := nm.connected
+	nm.mu.Unlock()
+
+	if !connected || client == nil {
+		// Not connected - silently skip
+		return
+	}
+
+	// Create short timeout context for notification
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	if err := fn(ctx, client); err != nil {
+		log.Printf("Notification: failed to send: %v", err)
+
+		// Mark as disconnected and trigger reconnect
+		nm.mu.Lock()
+		if nm.client != nil {
+			nm.client.Close()
+			nm.client = nil
+		}
+		nm.connected = false
+		nm.mu.Unlock()
+
+		nm.tryReconnect()
+	}
+}
+
+// OnPrismStarted notifies shinectl that a prism started
+func (nm *NotificationManager) OnPrismStarted(name string, pid int) {
+	log.Printf("Notification: prism started %s (PID %d)", name, pid)
+	nm.sendNotification(func(ctx context.Context, c *rpc.ShinectlClient) error {
+		return c.NotifyPrismStarted(ctx, nm.instance, name, pid)
+	})
+}
+
+// OnPrismStopped notifies shinectl that a prism stopped normally
+func (nm *NotificationManager) OnPrismStopped(name string, exitCode int) {
+	log.Printf("Notification: prism stopped %s (exit=%d)", name, exitCode)
+	nm.sendNotification(func(ctx context.Context, c *rpc.ShinectlClient) error {
+		return c.NotifyPrismStopped(ctx, nm.instance, name, exitCode)
+	})
+}
+
+// OnPrismCrashed notifies shinectl that a prism crashed
+func (nm *NotificationManager) OnPrismCrashed(name string, exitCode, signal int) {
+	log.Printf("Notification: prism crashed %s (exit=%d, signal=%d)", name, exitCode, signal)
+	nm.sendNotification(func(ctx context.Context, c *rpc.ShinectlClient) error {
+		return c.NotifyPrismCrashed(ctx, nm.instance, name, exitCode, signal)
+	})
+}
+
+// OnSurfaceSwitched notifies shinectl that foreground changed
+func (nm *NotificationManager) OnSurfaceSwitched(from, to string) {
+	log.Printf("Notification: surface switched %s → %s", from, to)
+	nm.sendNotification(func(ctx context.Context, c *rpc.ShinectlClient) error {
+		return c.NotifySurfaceSwitched(ctx, nm.instance, from, to)
+	})
+}
+
+// Close closes the notification manager and connection
+func (nm *NotificationManager) Close() {
+	close(nm.stopC)
+
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+
+	if nm.client != nil {
+		nm.client.Close()
+		nm.client = nil
+	}
+	nm.connected = false
+}

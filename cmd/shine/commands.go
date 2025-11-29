@@ -1,84 +1,68 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
+	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/starbased-co/shine/pkg/ipc"
 	"github.com/starbased-co/shine/pkg/paths"
+	"github.com/starbased-co/shine/pkg/rpc"
+	"github.com/starbased-co/shine/pkg/state"
 )
 
-// findShinectlSocket finds the shinectl socket path
-func findShinectlSocket() (string, error) {
-	socketsDir := paths.RuntimeDir()
-
-	// Look for shine.*.sock
-	pattern := filepath.Join(socketsDir, "shine.*.sock")
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return "", fmt.Errorf("failed to search for socket: %w", err)
-	}
-
-	if len(matches) == 0 {
-		return "", fmt.Errorf("shinectl is not running (socket not found)")
-	}
-
-	// Return the first match (should only be one)
-	return matches[0], nil
+func connectShinectl() (*rpc.ShinectlClient, error) {
+	sockPath := paths.ShinectlSocket()
+	return rpc.NewShinectlClient(sockPath, rpc.WithTimeout(3*time.Second))
 }
 
-// findPrismctlSockets finds all prismctl sockets
-func findPrismctlSockets() ([]string, error) {
+func isShinectlRunning() bool {
+	_, err := os.Stat(paths.ShinectlSocket())
+	return err == nil
+}
+
+// discovers running prismctl instances by scanning for runtime files (sockets/mmap)
+func discoverPrismInstances() ([]string, error) {
 	socketsDir := paths.RuntimeDir()
 
+	// Try sockets first (they're authoritative for running instances)
 	pattern := filepath.Join(socketsDir, "prism-*.sock")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search for sockets: %w", err)
 	}
 
-	return matches, nil
+	instances := make([]string, 0, len(matches))
+	for _, socket := range matches {
+		instances = append(instances, extractInstanceName(socket))
+	}
+
+	return instances, nil
 }
 
-// sendIPCCommand sends a command to a Unix socket and returns the response
-func sendIPCCommand(socketPath string, cmd ipc.Command) (*ipc.Response, error) {
-	conn, err := net.DialTimeout("unix", socketPath, 5*time.Second)
+// findPrismctlSockets finds all prismctl sockets (legacy helper)
+func findPrismctlSockets() ([]string, error) {
+	instances, err := discoverPrismInstances()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %w", err)
-	}
-	defer conn.Close()
-
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
-
-	// Send command
-	encoder := json.NewEncoder(conn)
-	if err := encoder.Encode(cmd); err != nil {
-		return nil, fmt.Errorf("failed to send command: %w", err)
+		return nil, err
 	}
 
-	// Read response
-	reader := bufio.NewReader(conn)
-	var resp ipc.Response
-	decoder := json.NewDecoder(reader)
-	if err := decoder.Decode(&resp); err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+	sockets := make([]string, len(instances))
+	for i, instance := range instances {
+		sockets[i] = paths.PrismSocket(instance)
 	}
 
-	return &resp, nil
+	return sockets, nil
 }
+
 
 // cmdStart starts or resumes the shinectl service
 func cmdStart() error {
 	// Check if shinectl is already running
-	_, err := findShinectlSocket()
-	if err == nil {
+	if isShinectlRunning() {
 		Success("shinectl is already running")
 		return nil
 	}
@@ -103,7 +87,7 @@ func cmdStart() error {
 
 	// Wait for socket to appear
 	for i := 0; i < 50; i++ {
-		if _, err := findShinectlSocket(); err == nil {
+		if isShinectlRunning() {
 			Success(fmt.Sprintf("shinectl started (PID: %d)", cmd.Process.Pid))
 			return nil
 		}
@@ -117,30 +101,68 @@ func cmdStart() error {
 func cmdStop() error {
 	Info("Stopping shine service...")
 
-	// Find all prismctl sockets
-	sockets, err := findPrismctlSockets()
+	ctx := context.Background()
+
+	// Try shinectl first
+	if isShinectlRunning() {
+		client, err := connectShinectl()
+		if err != nil {
+			Warning(fmt.Sprintf("Failed to connect to shinectl: %v, falling back to direct shutdown", err))
+		} else {
+			defer client.Close()
+
+			// Get panel list
+			result, err := client.Status(ctx)
+			if err != nil {
+				Warning(fmt.Sprintf("Failed to query shinectl status: %v", err))
+			} else {
+				// Shutdown each panel via shinectl
+				for _, panel := range result.Panels {
+					Muted(fmt.Sprintf("Stopping %s...", panel.Instance))
+					_, err := client.KillPanel(ctx, panel.Instance)
+					if err != nil {
+						Warning(fmt.Sprintf("Failed to stop %s: %v", panel.Instance, err))
+					}
+				}
+				Success(fmt.Sprintf("Stopped %d panel(s)", len(result.Panels)))
+				return nil
+			}
+		}
+	}
+
+	// Fallback: discover and stop prismctl instances directly
+	instances, err := discoverPrismInstances()
 	if err != nil {
 		return err
 	}
 
-	if len(sockets) == 0 {
+	if len(instances) == 0 {
 		Warning("No panels running")
 		return nil
 	}
 
-	// Send stop command to each panel
-	for _, socket := range sockets {
-		instanceName := extractInstanceName(socket)
-		Muted(fmt.Sprintf("Stopping %s...", instanceName))
+	// Send shutdown command to each panel
+	var stopped int
+	for _, instance := range instances {
+		Muted(fmt.Sprintf("Stopping %s...", instance))
 
-		cmd := ipc.Command{Action: "stop"}
-		_, err := sendIPCCommand(socket, cmd)
+		client, err := rpc.NewPrismClient(paths.PrismSocket(instance))
 		if err != nil {
-			Warning(fmt.Sprintf("Failed to stop %s: %v", instanceName, err))
+			Warning(fmt.Sprintf("Failed to connect to %s: %v", instance, err))
+			continue
+		}
+
+		_, err = client.Shutdown(ctx, true)
+		client.Close()
+
+		if err != nil {
+			Warning(fmt.Sprintf("Failed to stop %s: %v", instance, err))
+		} else {
+			stopped++
 		}
 	}
 
-	Success(fmt.Sprintf("Stopped %d panel(s)", len(sockets)))
+	Success(fmt.Sprintf("Stopped %d panel(s)", stopped))
 	return nil
 }
 
@@ -148,81 +170,201 @@ func cmdStop() error {
 func cmdReload() error {
 	Info("Reloading configuration...")
 
-	// For now, we need to manually send SIGHUP to shinectl
-	// In the future, we could have shinectl listen on its own socket
+	if !isShinectlRunning() {
+		return fmt.Errorf("shinectl is not running")
+	}
 
-	Warning("Config reload via IPC not yet implemented")
-	Info("To reload config, send SIGHUP to shinectl process:")
-	Muted("  pkill -HUP shinectl")
+	ctx := context.Background()
+	client, err := connectShinectl()
+	if err != nil {
+		return fmt.Errorf("failed to connect to shinectl: %w", err)
+	}
+	defer client.Close()
 
+	result, err := client.Reload(ctx)
+	if err != nil {
+		return fmt.Errorf("reload request failed: %w", err)
+	}
+
+	if !result.Reloaded {
+		if len(result.Errors) > 0 {
+			Error("Configuration reload failed:")
+			for _, errMsg := range result.Errors {
+				Muted(fmt.Sprintf("  - %s", errMsg))
+			}
+			return fmt.Errorf("reload completed with errors")
+		}
+		return fmt.Errorf("reload failed with no error details")
+	}
+
+	Success("Configuration reloaded successfully")
 	return nil
+}
+
+// displayStateFromMmap formats and displays state read from mmap
+func displayStateFromMmap(instance string, s *state.PrismRuntimeState) {
+	fmt.Println()
+	fmt.Printf("%s %s\n", styleBold.Render("Panel:"), instance)
+	fmt.Printf("%s %s\n", styleMuted.Render("Source:"), "mmap")
+
+	fgName := s.GetFgPrism()
+	activePrisms := s.ActivePrisms()
+	bgCount := len(activePrisms) - 1
+	if fgName == "" {
+		bgCount = len(activePrisms)
+	}
+
+	// Display status box
+	fmt.Println(StatusBox(fgName, bgCount, len(activePrisms)))
+
+	// Show prisms table
+	if len(activePrisms) > 0 {
+		table := NewTable("Prism", "PID", "State", "Uptime")
+		for _, prism := range activePrisms {
+			name := prism.GetName()
+			stateStr := "background"
+			if name == fgName {
+				stateStr = styleSuccess.Render("foreground")
+			} else {
+				stateStr = styleMuted.Render("background")
+			}
+			uptime := prism.Uptime()
+			uptimeStr := fmt.Sprintf("%v", uptime.Truncate(time.Second))
+			table.AddRow(name, fmt.Sprintf("%d", prism.PID), stateStr, uptimeStr)
+		}
+		fmt.Println()
+		table.Print()
+	}
+}
+
+// displayStateFromRPC formats and displays state read from RPC
+func displayStateFromRPC(instance string, prisms []rpc.PrismInfo) {
+	fmt.Println()
+	fmt.Printf("%s %s\n", styleBold.Render("Panel:"), instance)
+	fmt.Printf("%s %s\n", styleMuted.Render("Source:"), "rpc")
+
+	fgName := ""
+	bgCount := 0
+	for _, p := range prisms {
+		if p.State == "fg" {
+			fgName = p.Name
+		} else {
+			bgCount++
+		}
+	}
+
+	// Display status box
+	fmt.Println(StatusBox(fgName, bgCount, len(prisms)))
+
+	// Show prisms table
+	if len(prisms) > 0 {
+		table := NewTable("Prism", "PID", "State", "Uptime")
+		for _, prism := range prisms {
+			stateStr := prism.State
+			if prism.State == "fg" {
+				stateStr = styleSuccess.Render("foreground")
+			} else {
+				stateStr = styleMuted.Render("background")
+			}
+			uptime := time.Duration(prism.UptimeMs) * time.Millisecond
+			uptimeStr := fmt.Sprintf("%v", uptime.Truncate(time.Second))
+			table.AddRow(prism.Name, fmt.Sprintf("%d", prism.PID), stateStr, uptimeStr)
+		}
+		fmt.Println()
+		table.Print()
+	}
 }
 
 // cmdStatus shows the status of all panels
 func cmdStatus() error {
-	// Find all prismctl sockets
-	sockets, err := findPrismctlSockets()
+	ctx := context.Background()
+
+	// Try shinectl first for aggregated status
+	if isShinectlRunning() {
+		client, err := connectShinectl()
+		if err == nil {
+			defer client.Close()
+
+			result, err := client.Status(ctx)
+			if err == nil {
+				// Display shinectl-level status
+				uptime := time.Duration(result.Uptime) * time.Millisecond
+				uptimeStr := uptime.Truncate(time.Second).String()
+
+				Header(fmt.Sprintf("Shine Status (v%s, uptime: %s)", result.Version, uptimeStr))
+
+				if len(result.Panels) == 0 {
+					Warning("No panels running")
+					Info("Start panels with: shine start")
+					return nil
+				}
+
+				// Query each panel for detailed status
+				for _, panel := range result.Panels {
+					displayPanelStatus(ctx, panel.Instance)
+				}
+				return nil
+			}
+			// If shinectl query fails, fall through to discovery
+			Warning(fmt.Sprintf("Failed to query shinectl: %v, falling back to discovery", err))
+		}
+	}
+
+	// Fallback: discover all running prism instances directly
+	instances, err := discoverPrismInstances()
 	if err != nil {
 		return err
 	}
 
-	if len(sockets) == 0 {
+	if len(instances) == 0 {
 		Warning("No panels running")
 		Info("Start panels with: shine start")
 		return nil
 	}
 
-	Header(fmt.Sprintf("Shine Status (%d panel(s))", len(sockets)))
+	Header(fmt.Sprintf("Shine Status (%d panel(s))", len(instances)))
 
 	// Query each panel
-	for _, socket := range sockets {
-		instanceName := extractInstanceName(socket)
-		fmt.Println()
-		fmt.Printf("%s %s\n", styleBold.Render("Panel:"), instanceName)
-		fmt.Printf("%s %s\n", styleMuted.Render("Socket:"), socket)
-
-		// Query status
-		cmd := ipc.Command{Action: "status"}
-		resp, err := sendIPCCommand(socket, cmd)
-		if err != nil {
-			Error(fmt.Sprintf("Failed to query: %v", err))
-			continue
-		}
-
-		if !resp.Success {
-			Error(resp.Message)
-			continue
-		}
-
-		// Parse status data
-		dataBytes, _ := json.Marshal(resp.Data)
-		var status ipc.StatusResponse
-		if err := json.Unmarshal(dataBytes, &status); err != nil {
-			Error(fmt.Sprintf("Failed to parse status: %v", err))
-			continue
-		}
-
-		// Display status
-		fmt.Println(StatusBox(status.Foreground, len(status.Background), len(status.Prisms)))
-
-		// Show prisms table
-		if len(status.Prisms) > 0 {
-			table := NewTable("Prism", "PID", "State")
-			for _, prism := range status.Prisms {
-				stateStr := prism.State
-				if prism.State == "foreground" {
-					stateStr = styleSuccess.Render("foreground")
-				} else {
-					stateStr = styleMuted.Render("background")
-				}
-				table.AddRow(prism.Name, fmt.Sprintf("%d", prism.PID), stateStr)
-			}
-			fmt.Println()
-			table.Print()
-		}
+	for _, instance := range instances {
+		displayPanelStatus(ctx, instance)
 	}
 
 	return nil
+}
+
+// displayPanelStatus queries a single panel and displays its status
+func displayPanelStatus(ctx context.Context, instance string) {
+	// Try mmap first (instant, no connection needed)
+	reader, err := state.OpenPrismStateReader(paths.PrismState(instance))
+	if err == nil {
+		s, readErr := reader.Read()
+		reader.Close()
+		if readErr == nil {
+			displayStateFromMmap(instance, s)
+			return
+		}
+	}
+
+	// Fallback to RPC
+	client, err := rpc.NewPrismClient(paths.PrismSocket(instance))
+	if err != nil {
+		fmt.Println()
+		fmt.Printf("%s %s\n", styleBold.Render("Panel:"), instance)
+		Error(fmt.Sprintf("Failed to connect: %v", err))
+		return
+	}
+
+	result, err := client.List(ctx)
+	client.Close()
+
+	if err != nil {
+		fmt.Println()
+		fmt.Printf("%s %s\n", styleBold.Render("Panel:"), instance)
+		Error(fmt.Sprintf("Failed to query: %v", err))
+		return
+	}
+
+	displayStateFromRPC(instance, result.Prisms)
 }
 
 // cmdLogs shows logs for a specific panel or all panels

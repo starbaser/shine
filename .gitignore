@@ -1,6 +1,8 @@
 # Binaries
 bin/
-/shine           # Binary in root only
+/shine           # Binary in root (use bin/ instead)
+/shinectl        # Binary in root (use bin/ instead)
+/prismctl        # Binary in root (use bin/ instead)
 /shine-*         # Binaries in root only
 *.exe
 *.exe~
@@ -47,4 +49,4 @@ Thumbs.db
 
 # llmdocs ctx repositories (cloned, not committed)
 docs/llms/ctx/*
-.arc/
+arc/

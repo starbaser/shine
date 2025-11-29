@@ -107,11 +107,13 @@ ls /run/user/$(id -u)/shine/prism-*.sock
 
 ### Build
 
+**IMPORTANT**: Always use `make build` or specify `-o bin/` to avoid placing binaries in the project root.
+
 ```bash
-# Build all binaries
+# Build all binaries (preferred)
 make build
 
-# Or individually:
+# Or individually (ALWAYS use -o bin/):
 go build -o bin/shine ./cmd/shine
 go build -o bin/shinectl ./cmd/shinectl
 go build -o bin/prismctl ./cmd/prismctl
@@ -120,6 +122,8 @@ go build -o bin/prismctl ./cmd/prismctl
 go build -o bin/chat ./cmd/prisms/chat
 go build -o bin/clock ./cmd/prisms/clock
 go build -o bin/bar ./cmd/prisms/bar
+
+# NEVER run bare `go build ./cmd/...` - it creates binaries in the current directory
 ```
 
 ### Testing
@@ -352,6 +356,14 @@ shine status
 ```
 
 ## Important Constraints
+
+### Build Artifacts
+
+**NEVER** run bare `go build ./cmd/...` or `go build ./...` - this places binaries in the project root.
+
+Always use:
+- `make build` (preferred)
+- `go build -o bin/<name> ./cmd/<name>` (explicit output path)
 
 ### Kitty Remote Control
 

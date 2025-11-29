@@ -72,7 +72,7 @@ func TestPrismInstance_BackgroundState(t *testing.T) {
 
 func TestNewSupervisor_Initialization(t *testing.T) {
 	termState := &terminalState{}
-	sup := newSupervisor(termState)
+	sup := newSupervisor(termState, nil, nil) // Pass nil for state manager in test
 
 	if sup == nil {
 		t.Fatal("newSupervisor() returned nil")
@@ -120,7 +120,7 @@ func TestNewSupervisor_Initialization(t *testing.T) {
 }
 
 func TestSupervisor_FindPrism_EmptyList(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	idx := sup.findPrism("nonexistent")
 	if idx != -1 {
@@ -129,7 +129,7 @@ func TestSupervisor_FindPrism_EmptyList(t *testing.T) {
 }
 
 func TestSupervisor_FindPrism_SingleItem(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	sup.prismList = []prismInstance{
 		{name: "test-prism", pid: 100},
@@ -147,7 +147,7 @@ func TestSupervisor_FindPrism_SingleItem(t *testing.T) {
 }
 
 func TestSupervisor_FindPrism_MultipleItems(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	sup.prismList = []prismInstance{
 		{name: "prism-a", pid: 100},
@@ -174,7 +174,7 @@ func TestSupervisor_FindPrism_MultipleItems(t *testing.T) {
 }
 
 func TestSupervisor_FindPrism_DuplicateNames(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// If duplicates exist (shouldn't happen in practice), return first match
 	sup.prismList = []prismInstance{
@@ -189,7 +189,7 @@ func TestSupervisor_FindPrism_DuplicateNames(t *testing.T) {
 }
 
 func TestSupervisor_IsShuttingDown_NotShutdown(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	if sup.isShuttingDown() {
 		t.Error("isShuttingDown() = true on fresh supervisor, want false")
@@ -197,7 +197,7 @@ func TestSupervisor_IsShuttingDown_NotShutdown(t *testing.T) {
 }
 
 func TestSupervisor_IsShuttingDown_AfterShutdown(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// Set shuttingDown flag (normally done by shutdown())
 	sup.mu.Lock()
@@ -236,7 +236,7 @@ func TestChildExit_NonZeroExitCode(t *testing.T) {
 }
 
 func TestSupervisor_RelayContextCancellation(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// Verify context is not cancelled initially
 	select {
@@ -259,7 +259,7 @@ func TestSupervisor_RelayContextCancellation(t *testing.T) {
 }
 
 func TestSupervisor_PrismListOrdering(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// MRU list: [0] = foreground, [1+] = background in MRU order
 	sup.prismList = []prismInstance{
@@ -282,7 +282,7 @@ func TestSupervisor_PrismListOrdering(t *testing.T) {
 }
 
 func TestSupervisor_StartPrism_WrapperFunction(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// startPrism() should be a wrapper for start()
 	// Both should fail with same error for nonexistent prism
@@ -332,7 +332,7 @@ func TestRelayState_ContextPropagation(t *testing.T) {
 }
 
 func TestSupervisor_ChildExitChannelBuffered(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// Verify childExitCh is buffered (capacity 1)
 	exit := childExit{pid: 100, exitCode: 0}
@@ -350,7 +350,7 @@ func TestSupervisor_ChildExitChannelBuffered(t *testing.T) {
 }
 
 func TestSupervisor_MutexProtection(t *testing.T) {
-	sup := newSupervisor(&terminalState{})
+	sup := newSupervisor(&terminalState{}, nil, nil)
 
 	// Verify we can lock/unlock mutex (basic sanity check)
 	sup.mu.Lock()

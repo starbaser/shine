@@ -59,18 +59,12 @@ func LoadOrDefault(path string) *Config {
 	if cfg.Core == nil {
 		cfg.Core = &CoreConfig{
 			Path: []string{
-				"~/.local/share/shine/bin",
-				"~/.config/shine/bin",
 				"~/.config/shine/prisms",
-				"/usr/lib/shine/bin",
 			},
 		}
 	} else if cfg.Core.Path == nil {
 		cfg.Core.Path = []string{
-			"~/.local/share/shine/bin",
-			"~/.config/shine/bin",
 			"~/.config/shine/prisms",
-			"/usr/lib/shine/bin",
 		}
 	}
 

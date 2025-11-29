@@ -40,6 +40,8 @@ type supervisor struct {
 	surfaceCtx    context.Context
 	surfaceCancel context.CancelFunc
 	shuttingDown bool // Flag to prevent double-shutdown
+	stateManager *StateManager // State management for mmap file
+	notifyMgr    *NotificationManager // Notification manager for shinectl
 }
 
 // childExit represents a child process exit event
@@ -49,7 +51,7 @@ type childExit struct {
 }
 
 // newSupervisor creates a new supervisor instance
-func newSupervisor(termState *terminalState) *supervisor {
+func newSupervisor(termState *terminalState, stateMgr *StateManager, notifyMgr *NotificationManager) *supervisor {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &supervisor{
 		termState:     termState,
@@ -59,6 +61,8 @@ func newSupervisor(termState *terminalState) *supervisor {
 		surface:       nil,
 		surfaceCtx:    ctx,
 		surfaceCancel: cancel,
+		stateManager:  stateMgr,
+		notifyMgr:     notifyMgr,
 	}
 }
 
@@ -173,6 +177,16 @@ func (s *supervisor) launchAndForeground(prismName string) error {
 		log.Printf("Warning: failed to start surface: %v", err)
 	}
 
+	// Update state: new prism started in foreground
+	if s.stateManager != nil {
+		s.stateManager.OnPrismStarted(prismName, pid, true)
+	}
+
+	// Notify shinectl of prism start
+	if s.notifyMgr != nil {
+		s.notifyMgr.OnPrismStarted(prismName, pid)
+	}
+
 	return nil
 }
 
@@ -219,6 +233,18 @@ func (s *supervisor) resumeToForeground(targetIdx int) error {
 	// Send SIGWINCH after surface is connected to trigger redraw
 	if err := unix.Kill(target.pid, unix.SIGWINCH); err != nil {
 		log.Printf("Warning: failed to send SIGWINCH for redraw: %v", err)
+	}
+
+	// Update state: foreground changed
+	if s.stateManager != nil {
+		s.stateManager.OnForegroundChanged(target.name)
+	}
+
+	// Notify shinectl of surface switch
+	if s.notifyMgr != nil && len(s.prismList) > 1 {
+		// Previous foreground is now at index [1]
+		previousFg := s.prismList[1].name
+		s.notifyMgr.OnSurfaceSwitched(previousFg, target.name)
 	}
 
 	return nil
@@ -299,6 +325,21 @@ func (s *supervisor) handleChildExit(pid, exitCode int) {
 
 	// Remove from MRU list
 	s.prismList = append(s.prismList[:exitedIdx], s.prismList[exitedIdx+1:]...)
+
+	// Update state: prism stopped
+	if s.stateManager != nil {
+		s.stateManager.OnPrismStopped(exited.name)
+	}
+
+	// Notify shinectl of prism exit (stopped or crashed)
+	if s.notifyMgr != nil {
+		if exitCode == 0 {
+			s.notifyMgr.OnPrismStopped(exited.name, exitCode)
+		} else {
+			// Non-zero exit is a crash
+			s.notifyMgr.OnPrismCrashed(exited.name, exitCode, 0)
+		}
+	}
 
 	// Check if prismList is now empty - auto-shutdown
 	if len(s.prismList) == 0 {

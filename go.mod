@@ -23,6 +23,8 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20250327172914-2fdc97757edf // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/creachadair/jrpc2 v1.3.3 // indirect
+	github.com/creachadair/mds v0.25.4 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
@@ -54,6 +56,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	howett.net/plist v1.0.1 // indirect

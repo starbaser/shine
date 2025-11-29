@@ -103,14 +103,27 @@ func main() {
 
 	log.Printf("Loaded configuration with %d prism(s)", len(prismEntries))
 
+	// Create state manager
+	stateMgr, err := newStateManager()
+	if err != nil {
+		log.Fatalf("Failed to create state manager: %v", err)
+	}
+	defer stateMgr.Close()
+
 	// Create panel manager
 	pm, err := NewPanelManager()
 	if err != nil {
 		log.Fatalf("Failed to create panel manager: %v", err)
 	}
 
+	// Start RPC server
+	if err := startRPCServer(pm, stateMgr, cfgPath); err != nil {
+		log.Fatalf("Failed to start RPC server: %v", err)
+	}
+	defer stopRPCServer()
+
 	// Spawn initial panels
-	if err := spawnConfiguredPanels(pm, prismEntries); err != nil {
+	if err := spawnConfiguredPanels(pm, prismEntries, stateMgr); err != nil {
 		log.Fatalf("Failed to spawn panels: %v", err)
 	}
 
@@ -137,7 +150,9 @@ func main() {
 
 			case syscall.SIGTERM, syscall.SIGINT:
 				log.Println("Received shutdown signal - stopping all panels")
+				stopRPCServer()
 				pm.Shutdown()
+				stateMgr.Remove() // Clean up state file on shutdown
 				log.Println("shinectl stopped")
 				return
 			}
@@ -170,7 +185,7 @@ func setupLogging() *os.File {
 }
 
 // spawnConfiguredPanels spawns panels for all prisms in config
-func spawnConfiguredPanels(pm *PanelManager, entries []*PrismEntry) error {
+func spawnConfiguredPanels(pm *PanelManager, entries []*PrismEntry, stateMgr *StateManager) error {
 	for _, entry := range entries {
 		// Use prism name as instance name for kitty --instance-group
 		instanceName := entry.Name
@@ -182,6 +197,10 @@ func spawnConfiguredPanels(pm *PanelManager, entries []*PrismEntry) error {
 		if err != nil {
 			return fmt.Errorf("failed to spawn panel for %s: %w", entry.Name, err)
 		}
+
+		// Update state
+		healthy := pm.CheckHealth(panel)
+		stateMgr.OnPanelSpawned(panel.Instance, panel.Name, panel.PID, healthy)
 
 		log.Printf("Panel spawned successfully: %s (socket: %s)",
 			panel.Instance, panel.SocketPath)

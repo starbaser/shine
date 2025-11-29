@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/starbased-co/shine/pkg/paths"
 )
 
 // setupLogging configures logging to file instead of stderr
@@ -89,22 +91,33 @@ func main() {
 	}
 	log.Printf("Terminal state saved")
 
-	// Create supervisor
-	sup := newSupervisor(termState)
+	// Create state manager
+	statePath := paths.PrismState(instanceName)
+	stateMgr, err := newStateManager(statePath, instanceName)
+	if err != nil {
+		log.Fatalf("Failed to create state manager: %v", err)
+	}
+	defer stateMgr.Remove() // Clean up state file on exit
+	log.Printf("State file created: %s", statePath)
+
+	// Create notification manager
+	notifyMgr := newNotificationManager(instanceName)
+	defer notifyMgr.Close()
+	log.Printf("Notification manager started")
+
+	// Create supervisor with state manager and notification manager
+	sup := newSupervisor(termState, stateMgr, notifyMgr)
 
 	// Setup signal handling
 	sigHandler := newSignalHandler(sup)
 	defer sigHandler.stop()
 
-	// Start IPC server
-	ipcServer, err := newIPCServer(instanceName, sup)
+	// Start RPC server
+	rpcServer, err := startRPCServer(instanceName, sup, stateMgr)
 	if err != nil {
-		log.Fatalf("Failed to start IPC server: %v", err)
+		log.Fatalf("Failed to start RPC server: %v", err)
 	}
-	defer ipcServer.stop()
-
-	// Start IPC server in background
-	go ipcServer.serve()
+	defer stopRPCServer(rpcServer)
 
 	// Start initial prism
 	if err := sup.startPrism(prismName); err != nil {
