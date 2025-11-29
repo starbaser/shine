@@ -134,8 +134,8 @@ func (pm *PanelManager) SpawnPanel(config *PrismEntry, instanceName string) (*Pa
 	// Convert PrismEntry to panel.Config for positioning
 	panelCfg := config.ToPanelConfig()
 
-	// Build prismctl command path with arguments
-	prismctlArgs := []string{config.Name, instanceName}
+	// Pass only instance name to prismctl (apps sent via RPC)
+	prismctlArgs := []string{instanceName}
 
 	// Generate kitten @ launch arguments with positioning
 	kittenArgs := panelCfg.ToRemoteControlArgs(pm.prismctlBin)
@@ -156,7 +156,7 @@ func (pm *PanelManager) SpawnPanel(config *PrismEntry, instanceName string) (*Pa
 		return nil, fmt.Errorf("failed to get window ID from Kitty")
 	}
 
-	log.Printf("Spawned panel %s (window ID: %s) for prism %s", instanceName, windowID, config.Name)
+	log.Printf("Spawned panel %s (window ID: %s)", instanceName, windowID)
 
 	// Get PID from window ID
 	pid, err := getPIDFromWindowID(windowID)
@@ -199,7 +199,48 @@ func (pm *PanelManager) SpawnPanel(config *PrismEntry, instanceName string) (*Pa
 	}
 
 	pm.panels[instanceName] = panel
+
+	// Configure apps via RPC
+	if err := pm.configureApps(panel, config); err != nil {
+		return nil, fmt.Errorf("failed to configure apps: %w", err)
+	}
+
 	return panel, nil
+}
+
+// configureApps sends app configuration to prismctl via RPC
+func (pm *PanelManager) configureApps(panel *Panel, config *PrismEntry) error {
+	apps := make([]rpc.AppInfo, 0)
+
+	for name, appCfg := range config.GetApps() {
+		if appCfg == nil || !appCfg.Enabled || appCfg.ResolvedPath == "" {
+			continue
+		}
+		apps = append(apps, rpc.AppInfo{
+			Name:    name,
+			Path:    appCfg.ResolvedPath,
+			Enabled: appCfg.Enabled,
+		})
+	}
+
+	if len(apps) == 0 {
+		return fmt.Errorf("no enabled apps with resolved paths")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := panel.RPCClient.Configure(ctx, apps)
+	if err != nil {
+		return err
+	}
+
+	if len(result.Failed) > 0 {
+		return fmt.Errorf("failed to start apps: %v", result.Failed)
+	}
+
+	log.Printf("Configured panel %s with %d apps: %v", panel.Instance, len(result.Started), result.Started)
+	return nil
 }
 
 // KillPanel terminates a panel by closing the Kitty window
@@ -337,8 +378,8 @@ func (pm *PanelManager) spawnPanelUnlocked(config *PrismEntry, instanceName stri
 	// Convert PrismEntry to panel.Config for positioning
 	panelCfg := config.ToPanelConfig()
 
-	// Build prismctl command path with arguments
-	prismctlArgs := []string{config.Name, instanceName}
+	// Pass only instance name to prismctl (apps sent via RPC)
+	prismctlArgs := []string{instanceName}
 
 	// Generate kitten @ launch arguments with positioning
 	kittenArgs := panelCfg.ToRemoteControlArgs(pm.prismctlBin)
@@ -398,6 +439,12 @@ func (pm *PanelManager) spawnPanelUnlocked(config *PrismEntry, instanceName stri
 	}
 
 	pm.panels[instanceName] = panel
+
+	// Configure apps via RPC
+	if err := pm.configureApps(panel, config); err != nil {
+		return nil, fmt.Errorf("failed to configure apps: %w", err)
+	}
+
 	return panel, nil
 }
 

@@ -42,6 +42,7 @@ type supervisor struct {
 	shuttingDown bool // Flag to prevent double-shutdown
 	stateManager *StateManager // State management for mmap file
 	notifyMgr    *NotificationManager // Notification manager for shinectl
+	appPaths     map[string]string // App name → resolved binary path (multi-app mode)
 }
 
 // childExit represents a child process exit event
@@ -63,6 +64,7 @@ func newSupervisor(termState *terminalState, stateMgr *StateManager, notifyMgr *
 		surfaceCancel: cancel,
 		stateManager:  stateMgr,
 		notifyMgr:     notifyMgr,
+		appPaths:      make(map[string]string),
 	}
 }
 
@@ -74,6 +76,13 @@ func (s *supervisor) findPrism(name string) int {
 		}
 	}
 	return -1
+}
+
+// registerApp stores the resolved binary path for an app (used in multi-app mode)
+func (s *supervisor) registerApp(name, path string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.appPaths[name] = path
 }
 
 // startPrism launches the initial prism (wrapper for compatibility)
@@ -104,10 +113,22 @@ func (s *supervisor) start(prismName string) error {
 
 // launchAndForeground launches a new prism and brings it to foreground
 func (s *supervisor) launchAndForeground(prismName string) error {
-	// Resolve binary path
-	binaryPath, err := exec.LookPath(prismName)
-	if err != nil {
-		return fmt.Errorf("prism not found in PATH: %s (%w)", prismName, err)
+	var binaryPath string
+	var err error
+
+	// Check if we have a registered path for this app (multi-app mode)
+	s.mu.Lock()
+	if path, ok := s.appPaths[prismName]; ok && path != "" {
+		binaryPath = path
+	}
+	s.mu.Unlock()
+
+	if binaryPath == "" {
+		// Fall back to LookPath (legacy single-app mode)
+		binaryPath, err = exec.LookPath(prismName)
+		if err != nil {
+			return fmt.Errorf("prism not found in PATH: %s (%w)", prismName, err)
+		}
 	}
 
 	log.Printf("Launching new prism: %s (resolved to %s)", prismName, binaryPath)

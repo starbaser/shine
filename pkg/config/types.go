@@ -2,6 +2,19 @@ package config
 
 import "github.com/starbased-co/shine/pkg/panel"
 
+// AppConfig defines a single app within a prism (multi-app mode)
+type AppConfig struct {
+	// Path specifies the binary name or path
+	// If empty, defaults to app key name
+	Path string `toml:"path,omitempty"`
+
+	// Enabled controls whether this app should be launched
+	Enabled bool `toml:"enabled"`
+
+	// ResolvedPath is set during discovery (not from TOML)
+	ResolvedPath string `toml:"-"`
+}
+
 // Config represents the main shine configuration
 type Config struct {
 	Core   *CoreConfig             `toml:"core"`
@@ -56,6 +69,11 @@ type PrismConfig struct {
 	// Can be a simple name (e.g., "shine-weather") or a path (e.g., "/usr/bin/shine-weather")
 	Path string `toml:"path,omitempty"`
 
+	// Apps defines multiple apps for this prism (multi-app mode)
+	// When set, this prism can manage multiple TUI applications
+	// The key is the app name, value is the app configuration
+	Apps map[string]*AppConfig `toml:"apps,omitempty"`
+
 	// === Runtime State ===
 	// Enabled controls whether this prism should be launched
 	Enabled bool `toml:"enabled"`
@@ -81,6 +99,32 @@ type PrismConfig struct {
 	// ResolvedPath is the actual path to the binary after discovery
 	// This is set during discovery and not read from configuration files
 	ResolvedPath string `toml:"-"`
+}
+
+// IsMultiApp returns true if this prism uses multi-app configuration
+func (pc *PrismConfig) IsMultiApp() bool {
+	return len(pc.Apps) > 0
+}
+
+// GetApps returns normalized app configurations
+// For single-app mode (Path set), returns a synthetic single-app map
+// For multi-app mode, returns the Apps map
+func (pc *PrismConfig) GetApps() map[string]*AppConfig {
+	if pc.IsMultiApp() {
+		return pc.Apps
+	}
+	// Single-app mode: create synthetic app from Path
+	if pc.Path != "" || pc.ResolvedPath != "" {
+		name := pc.Name
+		return map[string]*AppConfig{
+			name: {
+				Path:         pc.Path,
+				Enabled:      true,
+				ResolvedPath: pc.ResolvedPath,
+			},
+		}
+	}
+	return nil
 }
 
 // ToPanelConfig converts PrismConfig to panel.Config

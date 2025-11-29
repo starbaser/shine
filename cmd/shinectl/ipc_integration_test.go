@@ -13,7 +13,7 @@ import (
 // TestShinectlIPC_PanelLifecycle tests full panel spawn → list → kill flow
 func TestShinectlIPC_PanelLifecycle(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	// Create test handlers with mock implementations
 	listResult := &rpc.PanelListResult{Panels: []rpc.PanelInfo{}}
@@ -122,7 +122,7 @@ func TestShinectlIPC_PanelLifecycle(t *testing.T) {
 // TestShinectlIPC_ServiceStatus tests service status endpoint
 func TestShinectlIPC_ServiceStatus(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	mux := handler.Map{
 		"service/status": handler.New(func(ctx context.Context) (*rpc.ServiceStatusResult, error) {
@@ -169,7 +169,7 @@ func TestShinectlIPC_ServiceStatus(t *testing.T) {
 // TestShinectlIPC_ConfigReload tests config reload endpoint
 func TestShinectlIPC_ConfigReload(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	reloaded := false
 	mux := handler.Map{
@@ -211,7 +211,7 @@ func TestShinectlIPC_ConfigReload(t *testing.T) {
 // TestShinectlIPC_ErrorHandling tests error handling for invalid requests
 func TestShinectlIPC_ErrorHandling(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	panelExists := false
 
@@ -309,7 +309,7 @@ func TestShinectlIPC_ErrorHandling(t *testing.T) {
 // TestShinectlIPC_ConcurrentAccess tests multiple clients accessing the service
 func TestShinectlIPC_ConcurrentAccess(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	callCount := 0
 	mux := handler.Map{

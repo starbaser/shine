@@ -36,7 +36,7 @@ license = "MIT"
 	}
 
 	// Test discovery
-	prism, err := discoverDirectoryPrism(tmpDir, "weather")
+	prism, err := discoverDirectoryPrism(tmpDir, "weather", []string{})
 	if err != nil {
 		t.Fatalf("Failed to discover directory prism: %v", err)
 	}
@@ -90,7 +90,7 @@ author = "Clock Author"
 	}
 
 	// Test discovery
-	prism, err := discoverStandalonePrism(tmpDir, "clock.toml")
+	prism, err := discoverStandalonePrism(tmpDir, "clock.toml", []string{})
 	if err != nil {
 		t.Fatalf("Failed to discover standalone prism: %v", err)
 	}
@@ -148,7 +148,7 @@ width = "150px"
 	os.WriteFile(filepath.Join(tmpDir, "clock.toml"), []byte(clockConfig), 0644)
 
 	// Discover all prisms
-	discovered, err := DiscoverPrisms([]string{tmpDir})
+	discovered, err := DiscoverPrisms([]string{tmpDir}, []string{})
 	if err != nil {
 		t.Fatalf("DiscoverPrisms failed: %v", err)
 	}

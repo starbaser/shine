@@ -31,7 +31,8 @@ type DiscoveredPrism struct {
 
 // DiscoverPrisms searches for prisms in the configured prism directories
 // Returns a map of prism name -> discovered prism information
-func DiscoverPrisms(prismDirs []string) (map[string]*DiscoveredPrism, error) {
+// extraPaths are additional directories to search for binaries
+func DiscoverPrisms(prismDirs []string, extraPaths []string) (map[string]*DiscoveredPrism, error) {
 	discovered := make(map[string]*DiscoveredPrism)
 
 	for _, baseDir := range prismDirs {
@@ -52,7 +53,7 @@ func DiscoverPrisms(prismDirs []string) (map[string]*DiscoveredPrism, error) {
 		for _, entry := range entries {
 			// Type 1 & 2: Directory-based prisms
 			if entry.IsDir() {
-				prism, err := discoverDirectoryPrism(expandedDir, entry.Name())
+				prism, err := discoverDirectoryPrism(expandedDir, entry.Name(), extraPaths)
 				if err == nil && prism != nil {
 					// Only add if not already discovered (first match wins)
 					if _, exists := discovered[prism.Config.Name]; !exists {
@@ -64,7 +65,7 @@ func DiscoverPrisms(prismDirs []string) (map[string]*DiscoveredPrism, error) {
 
 			// Type 3: Standalone .toml files
 			if strings.HasSuffix(entry.Name(), ".toml") && entry.Name() != "prism.toml" {
-				prism, err := discoverStandalonePrism(expandedDir, entry.Name())
+				prism, err := discoverStandalonePrism(expandedDir, entry.Name(), extraPaths)
 				if err == nil && prism != nil {
 					// Only add if not already discovered (first match wins)
 					if _, exists := discovered[prism.Config.Name]; !exists {
@@ -79,7 +80,7 @@ func DiscoverPrisms(prismDirs []string) (map[string]*DiscoveredPrism, error) {
 }
 
 // discoverDirectoryPrism handles Type 1 (full package) and Type 2 (data directory)
-func discoverDirectoryPrism(baseDir, dirName string) (*DiscoveredPrism, error) {
+func discoverDirectoryPrism(baseDir, dirName string, extraPaths []string) (*DiscoveredPrism, error) {
 	prismDir := filepath.Join(baseDir, dirName)
 	manifestPath := filepath.Join(prismDir, "prism.toml")
 
@@ -99,7 +100,10 @@ func discoverDirectoryPrism(baseDir, dirName string) (*DiscoveredPrism, error) {
 		return nil, fmt.Errorf("prism.toml missing required 'name' field")
 	}
 
-	// Try to resolve binary path
+	// Resolve paths for multi-app prisms
+	resolveAppPaths(config, prismDir, extraPaths)
+
+	// Resolve single-app path (for backward compatibility)
 	var resolvedPath string
 	if config.Path != "" {
 		// Check if binary is in the prism directory (Type 1: Full package)
@@ -108,7 +112,7 @@ func discoverDirectoryPrism(baseDir, dirName string) (*DiscoveredPrism, error) {
 			resolvedPath = binaryPath
 		} else {
 			// Type 2: Data directory, binary via PATH
-			resolvedPath = findInPATH(config.Path)
+			resolvedPath = findInPATH(config.Path, extraPaths)
 		}
 	} else {
 		// Default binary name
@@ -117,7 +121,7 @@ func discoverDirectoryPrism(baseDir, dirName string) (*DiscoveredPrism, error) {
 		if isExecutable(binaryPath) {
 			resolvedPath = binaryPath
 		} else {
-			resolvedPath = findInPATH(defaultName)
+			resolvedPath = findInPATH(defaultName, extraPaths)
 		}
 	}
 
@@ -131,7 +135,7 @@ func discoverDirectoryPrism(baseDir, dirName string) (*DiscoveredPrism, error) {
 }
 
 // discoverStandalonePrism handles Type 3 (standalone .toml files)
-func discoverStandalonePrism(baseDir, filename string) (*DiscoveredPrism, error) {
+func discoverStandalonePrism(baseDir, filename string, extraPaths []string) (*DiscoveredPrism, error) {
 	configPath := filepath.Join(baseDir, filename)
 
 	// Load configuration
@@ -145,7 +149,10 @@ func discoverStandalonePrism(baseDir, filename string) (*DiscoveredPrism, error)
 		return nil, fmt.Errorf("%s missing required 'name' field", filename)
 	}
 
-	// Resolve binary path (always via PATH for standalone configs)
+	// Resolve paths for multi-app prisms (no prismDir for standalone)
+	resolveAppPaths(config, "", extraPaths)
+
+	// Resolve single-app path (always via PATH for standalone configs)
 	var binaryName string
 	if config.Path != "" {
 		binaryName = config.Path
@@ -153,7 +160,7 @@ func discoverStandalonePrism(baseDir, filename string) (*DiscoveredPrism, error)
 		binaryName = "shine-" + config.Name
 	}
 
-	config.ResolvedPath = findInPATH(binaryName)
+	config.ResolvedPath = findInPATH(binaryName, extraPaths)
 
 	return &DiscoveredPrism{
 		Config: config,
@@ -210,6 +217,15 @@ func MergePrismConfigs(prismSource, userConfig *PrismConfig) *PrismConfig {
 		merged.Path = prismSource.Path
 	}
 
+	// === Multi-App Configuration ===
+	// If user config has Apps, use it entirely (override, don't merge individual apps)
+	// Otherwise use prism source Apps
+	if len(userConfig.Apps) > 0 {
+		merged.Apps = userConfig.Apps
+	} else {
+		merged.Apps = prismSource.Apps
+	}
+
 	// === Runtime State ===
 	// User's enabled setting takes priority
 	merged.Enabled = userConfig.Enabled || prismSource.Enabled
@@ -261,8 +277,50 @@ func MergePrismConfigs(prismSource, userConfig *PrismConfig) *PrismConfig {
 	return merged
 }
 
-// findInPATH searches for an executable in the system PATH
-func findInPATH(name string) string {
+// resolveAppPaths resolves binary paths for all apps in a multi-app prism
+func resolveAppPaths(config *PrismConfig, prismDir string, extraPaths []string) {
+	if !config.IsMultiApp() {
+		return
+	}
+
+	for appName, app := range config.Apps {
+		if !app.Enabled {
+			continue
+		}
+
+		var binaryName string
+		if app.Path != "" {
+			binaryName = app.Path
+		} else {
+			binaryName = appName // default to app key name
+		}
+
+		// Try local directory first (if prismDir provided)
+		if prismDir != "" {
+			binaryPath := filepath.Join(prismDir, binaryName)
+			if isExecutable(binaryPath) {
+				app.ResolvedPath = binaryPath
+				continue
+			}
+		}
+
+		// Search in extra paths and system PATH
+		app.ResolvedPath = findInPATH(binaryName, extraPaths)
+	}
+}
+
+// findInPATH searches for an executable in extra paths and system PATH
+func findInPATH(name string, extraPaths []string) string {
+	// Try extra paths first
+	for _, extraPath := range extraPaths {
+		expandedPath := paths.ExpandHome(extraPath)
+		candidatePath := filepath.Join(expandedPath, name)
+		if isExecutable(candidatePath) {
+			return candidatePath
+		}
+	}
+
+	// Fall back to system PATH
 	path, err := exec.LookPath(name)
 	if err != nil {
 		return ""

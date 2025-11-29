@@ -39,7 +39,7 @@ func TestNotificationManager_Reconnect(t *testing.T) {
 // TestNotificationDelivery_PrismStarted tests prism started notification
 func TestNotificationDelivery_PrismStarted(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismStartedNotification
 	mux := handler.Map{
@@ -93,7 +93,7 @@ func TestNotificationDelivery_PrismStarted(t *testing.T) {
 // TestNotificationDelivery_PrismStopped tests prism stopped notification
 func TestNotificationDelivery_PrismStopped(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismStoppedNotification
 	mux := handler.Map{
@@ -141,7 +141,7 @@ func TestNotificationDelivery_PrismStopped(t *testing.T) {
 // TestNotificationDelivery_PrismCrashed tests prism crashed notification
 func TestNotificationDelivery_PrismCrashed(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismCrashedNotification
 	mux := handler.Map{
@@ -193,7 +193,7 @@ func TestNotificationDelivery_PrismCrashed(t *testing.T) {
 // TestNotificationDelivery_SurfaceSwitched tests surface switched notification
 func TestNotificationDelivery_SurfaceSwitched(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.SurfaceSwitchedNotification
 	mux := handler.Map{
@@ -244,7 +244,7 @@ func TestNotificationDelivery_SurfaceSwitched(t *testing.T) {
 // TestNotificationBatch tests multiple notifications in sequence
 func TestNotificationBatch(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	notifications := make([]string, 0)
 	mux := handler.Map{

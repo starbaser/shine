@@ -28,6 +28,18 @@ func (c *Config) Validate() error {
 
 // Validate checks if the PrismConfig is valid
 func (pc *PrismConfig) Validate() error {
+	// Validate apps if multi-app mode
+	if pc.IsMultiApp() {
+		for appName, app := range pc.Apps {
+			if app == nil {
+				return fmt.Errorf("app %q: nil configuration", appName)
+			}
+			if err := app.Validate(); err != nil {
+				return fmt.Errorf("app %q: %w", appName, err)
+			}
+		}
+	}
+
 	// Validate positioning fields using pkg/panel parsers
 	if pc.Origin != "" {
 		// Validate origin is recognized
@@ -57,6 +69,13 @@ func (pc *PrismConfig) Validate() error {
 		_ = panel.ParseFocusPolicy(pc.FocusPolicy)
 	}
 
+	return nil
+}
+
+// Validate checks if the AppConfig is valid
+func (ac *AppConfig) Validate() error {
+	// Path can be empty (defaults to app key name)
+	// Enabled is just a bool, no validation needed
 	return nil
 }
 

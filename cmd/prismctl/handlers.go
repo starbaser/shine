@@ -22,6 +22,7 @@ func newRPCHandlers(sup *supervisor, stateMgr *StateManager) handler.Map {
 	}
 
 	return handler.Map{
+		"prism/configure":  handler.New(h.handleConfigure),
 		"prism/up":         handler.New(h.handleUp),
 		"prism/down":       handler.New(h.handleDown),
 		"prism/fg":         handler.New(h.handleFg),
@@ -30,6 +31,36 @@ func newRPCHandlers(sup *supervisor, stateMgr *StateManager) handler.Map {
 		"service/health":   handler.New(h.handleHealth),
 		"service/shutdown": handler.New(h.handleShutdown),
 	}
+}
+
+// handleConfigure receives app configuration from shinectl and starts apps
+func (h *rpcHandlers) handleConfigure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResult, error) {
+	log.Printf("RPC: prism/configure with %d apps", len(req.Apps))
+
+	result := &rpc.ConfigureResult{
+		Started: make([]string, 0),
+		Failed:  make([]string, 0),
+	}
+
+	for _, app := range req.Apps {
+		if !app.Enabled {
+			continue
+		}
+
+		// Register the resolved path for this app
+		h.supervisor.registerApp(app.Name, app.Path)
+
+		// Start the app (first one becomes foreground, rest background)
+		if err := h.supervisor.start(app.Name); err != nil {
+			log.Printf("Failed to start app %s: %v", app.Name, err)
+			result.Failed = append(result.Failed, app.Name)
+			continue
+		}
+
+		result.Started = append(result.Started, app.Name)
+	}
+
+	return result, nil
 }
 
 // handleUp starts or resumes a prism (idempotent)

@@ -13,7 +13,7 @@ import (
 // TestNotificationHandlers_PrismStarted tests prism started notification handler
 func TestNotificationHandlers_PrismStarted(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismStartedNotification
 
@@ -60,7 +60,7 @@ func TestNotificationHandlers_PrismStarted(t *testing.T) {
 // TestNotificationHandlers_PrismStopped tests prism stopped notification handler
 func TestNotificationHandlers_PrismStopped(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismStoppedNotification
 
@@ -107,7 +107,7 @@ func TestNotificationHandlers_PrismStopped(t *testing.T) {
 // TestNotificationHandlers_PrismCrashed tests prism crashed notification handler
 func TestNotificationHandlers_PrismCrashed(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.PrismCrashedNotification
 
@@ -155,7 +155,7 @@ func TestNotificationHandlers_PrismCrashed(t *testing.T) {
 // TestNotificationHandlers_SurfaceSwitched tests surface switched notification handler
 func TestNotificationHandlers_SurfaceSwitched(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	var receivedNotification *rpc.SurfaceSwitchedNotification
 
@@ -202,7 +202,7 @@ func TestNotificationHandlers_SurfaceSwitched(t *testing.T) {
 // TestNotificationHandlers_Integration tests full notification flow
 func TestNotificationHandlers_Integration(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	receivedCount := 0
 	mux := handler.Map{
@@ -255,7 +255,7 @@ func TestNotificationHandlers_Integration(t *testing.T) {
 // TestNotificationHandlers_ConcurrentNotifications tests concurrent notification delivery
 func TestNotificationHandlers_ConcurrentNotifications(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	notificationCount := 0
 	mux := handler.Map{
@@ -317,7 +317,7 @@ func TestNotificationHandlers_ConcurrentNotifications(t *testing.T) {
 // TestNotificationHandlers_ErrorHandling tests error handling in notification handlers
 func TestNotificationHandlers_ErrorHandling(t *testing.T) {
 	tmpDir := t.TempDir()
-	sockPath := filepath.Join(tmpDir, "shinectl.sock")
+	sockPath := filepath.Join(tmpDir, "shine.sock")
 
 	// Handler that returns error
 	mux := handler.Map{

@@ -30,7 +30,8 @@ func Load(path string) (*Config, error) {
 	// Discover prisms from configured directories
 	if cfg.Core != nil && cfg.Core.Path != nil {
 		prismDirs := cfg.Core.GetPaths()
-		discovered, err := DiscoverPrisms(prismDirs)
+		// Use prismDirs as extraPaths for binary resolution
+		discovered, err := DiscoverPrisms(prismDirs, prismDirs)
 		if err == nil {
 			// Merge discovered prisms with shine.toml config
 			for name, discoveredPrism := range discovered {

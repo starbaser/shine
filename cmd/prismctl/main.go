@@ -68,21 +68,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Parse arguments
+	// Parse arguments - only expect instance name
 	if len(os.Args) < 2 {
 		showHelp("")
 		os.Exit(1)
 	}
 
-	prismName := os.Args[1]
-	instanceName := prismName
-
-	// Optional instance name for socket identification
-	if len(os.Args) >= 3 {
-		instanceName = os.Args[2]
-	}
-
-	log.Printf("prismctl starting (prism: %s, instance: %s)", prismName, instanceName)
+	instanceName := os.Args[1]
+	log.Printf("prismctl starting (instance: %s)", instanceName)
 
 	// Initialize terminal state management
 	termState, err := newTerminalState()
@@ -119,13 +112,8 @@ func main() {
 	}
 	defer stopRPCServer(rpcServer)
 
-	// Start initial prism
-	if err := sup.startPrism(prismName); err != nil {
-		log.Fatalf("Failed to start prism: %v", err)
-	}
-
-	// Run signal handler (blocks until shutdown)
-	log.Printf("prismctl running (PID %d)", os.Getpid())
+	// Wait for configuration via RPC (no initial prism launch)
+	log.Printf("prismctl running (PID %d), awaiting configuration via RPC", os.Getpid())
 	sigHandler.run()
 
 	log.Printf("prismctl exiting")

@@ -135,6 +135,13 @@ func (c *PrismClient) Shutdown(ctx context.Context, graceful bool) (*ShutdownRes
 	return &result, err
 }
 
+// Configure sends app configuration to prismctl
+func (c *PrismClient) Configure(ctx context.Context, apps []AppInfo) (*ConfigureResult, error) {
+	var result ConfigureResult
+	err := c.Call(ctx, "prism/configure", &ConfigureRequest{Apps: apps}, &result)
+	return &result, err
+}
+
 // ShinectlClient is a typed client for shinectl RPC
 type ShinectlClient struct {
 	*Client

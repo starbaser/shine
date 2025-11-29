@@ -52,7 +52,7 @@ func RuntimeDir() string {
 
 // ShinectlSocket returns the path to the shinectl control socket
 func ShinectlSocket() string {
-	return filepath.Join(RuntimeDir(), "shinectl.sock")
+	return filepath.Join(RuntimeDir(), "shine.sock")
 }
 
 // PrismSocket returns the path to a prism's control socket

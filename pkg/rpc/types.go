@@ -63,6 +63,24 @@ type BgResult struct {
 	WasBg bool `json:"was_bg"` // true if already background (idempotent)
 }
 
+// AppInfo describes an app configuration for the configure RPC
+type AppInfo struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`    // resolved binary path
+	Enabled bool   `json:"enabled"`
+}
+
+// ConfigureRequest is the request for prism/configure
+type ConfigureRequest struct {
+	Apps []AppInfo `json:"apps"`
+}
+
+// ConfigureResult is the response for prism/configure
+type ConfigureResult struct {
+	Started []string `json:"started"` // apps that were started
+	Failed  []string `json:"failed"`  // apps that failed to start
+}
+
 // ListResult is the response for prism/list
 type ListResult struct {
 	Prisms []PrismInfo `json:"prisms"`
@@ -84,7 +102,7 @@ type ShutdownResult struct {
 	ShuttingDown bool `json:"shutting_down"`
 }
 
-// shinectl RPC types (shinectl.sock)
+// shinectl RPC types (shine.sock)
 
 // PanelListResult is the response for panel/list
 type PanelListResult struct {
