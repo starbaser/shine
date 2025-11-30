@@ -1,7 +1,6 @@
 package help
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -97,30 +96,4 @@ func (r *Registry) renderCategories(opts RenderOptions) string {
 	}
 
 	return b.String()
-}
-
-// JSON renders topic metadata as JSON
-func (r *Registry) JSON(topicName string) ([]byte, error) {
-	if topicName == "" || topicName == "list" {
-		// List all topics
-		return json.MarshalIndent(r.List(), "", "  ")
-	}
-
-	if topicName == "categories" {
-		// List categories
-		return json.MarshalIndent(r.Categories(), "", "  ")
-	}
-
-	if topicName == "names" {
-		// List topic names
-		return json.MarshalIndent(r.Names(), "", "  ")
-	}
-
-	// Get specific topic
-	topic, ok := r.Get(topicName)
-	if !ok {
-		return nil, fmt.Errorf("topic %q not found", topicName)
-	}
-
-	return json.MarshalIndent(topic, "", "  ")
 }

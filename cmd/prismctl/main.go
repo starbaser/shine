@@ -49,17 +49,6 @@ func main() {
 			showHelp(topic)
 			os.Exit(0)
 		}
-		if arg == "--json" && len(os.Args) >= 3 && os.Args[2] == "help" {
-			topic := ""
-			if len(os.Args) >= 4 {
-				topic = os.Args[3]
-			}
-			if err := helpJSON(topic); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
 	}
 
 	// Setup logging to file

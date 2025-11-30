@@ -6,12 +6,12 @@ import (
 
 // Topic represents a help topic with metadata and content
 type Topic struct {
-	Name     string   `json:"name"`
-	Category string   `json:"category"`
-	Synopsis string   `json:"synopsis"`
-	Usage    string   `json:"usage,omitempty"`
-	Related  []string `json:"related,omitempty"`
-	Content  string   `json:"-"` // Markdown content (exclude from JSON)
+	Name     string
+	Category string
+	Synopsis string
+	Usage    string
+	Related  []string
+	Content  string // Markdown content
 }
 
 // Registry manages help topics
