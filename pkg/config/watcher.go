@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Watcher monitors config file for changes
 type Watcher struct {
 	configPath string
 	lastMod    time.Time
@@ -15,7 +14,6 @@ type Watcher struct {
 	stop       chan bool
 }
 
-// NewWatcher creates a new config file watcher
 func NewWatcher(configPath string, onChange func(*Config)) (*Watcher, error) {
 	info, err := os.Stat(configPath)
 	if err != nil {
@@ -30,8 +28,8 @@ func NewWatcher(configPath string, onChange func(*Config)) (*Watcher, error) {
 	}, nil
 }
 
-// Start begins watching the config file
-// Checks for changes every second using stat polling
+// Start begins watching the config file.
+// Checks for changes every second using stat polling.
 func (w *Watcher) Start() {
 	w.ticker = time.NewTicker(1 * time.Second)
 
@@ -47,7 +45,6 @@ func (w *Watcher) Start() {
 	}()
 }
 
-// Stop halts the watcher
 func (w *Watcher) Stop() {
 	if w.ticker != nil {
 		w.ticker.Stop()
@@ -55,7 +52,6 @@ func (w *Watcher) Stop() {
 	close(w.stop)
 }
 
-// checkForChanges polls the file for modifications
 func (w *Watcher) checkForChanges() {
 	info, err := os.Stat(w.configPath)
 	if err != nil {

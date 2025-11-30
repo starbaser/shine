@@ -73,7 +73,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// Large clock display
 	timeStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("13")). // Bright magenta
 		Background(lipgloss.Color("0")).  // Black background
@@ -82,7 +81,6 @@ func (m model) View() string {
 		Width(m.width).
 		Height(m.height)
 
-	// Format time with larger text feel
 	timeStr := m.currentTime.Format("15:04:05")
 
 	return timeStyle.Render(timeStr)

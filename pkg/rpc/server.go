@@ -13,7 +13,6 @@ import (
 	"github.com/creachadair/jrpc2/handler"
 )
 
-// Server wraps a JSON-RPC 2.0 server over a Unix socket
 type Server struct {
 	sockPath string
 	listener net.Listener
@@ -26,7 +25,6 @@ type Server struct {
 	shutdown chan struct{}
 }
 
-// NewServer creates a new RPC server
 func NewServer(sockPath string, mux handler.Map, opts *jrpc2.ServerOptions) *Server {
 	if opts == nil {
 		opts = &jrpc2.ServerOptions{}
@@ -40,9 +38,7 @@ func NewServer(sockPath string, mux handler.Map, opts *jrpc2.ServerOptions) *Ser
 	}
 }
 
-// Start begins listening and accepting connections
 func (s *Server) Start() error {
-	// Remove stale socket if it exists
 	if err := os.Remove(s.sockPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove stale socket: %w", err)
 	}
@@ -52,7 +48,6 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to listen on %s: %w", s.sockPath, err)
 	}
 
-	// Set socket permissions (user only by default)
 	if err := os.Chmod(s.sockPath, 0600); err != nil {
 		listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
@@ -86,7 +81,6 @@ func (s *Server) acceptLoop() {
 func (s *Server) serveConn(conn net.Conn) {
 	defer conn.Close()
 
-	// Create channel from connection (newline-delimited JSON)
 	ch := channel.Line(conn, conn)
 
 	srv := jrpc2.NewServer(s.mux, s.opts)
@@ -103,14 +97,12 @@ func (s *Server) serveConn(conn net.Conn) {
 
 	srv.Start(ch)
 	if err := srv.Wait(); err != nil {
-		// Ignore EOF errors from client disconnect
 		if err.Error() != "EOF" {
 			log.Printf("server error: %v", err)
 		}
 	}
 }
 
-// Stop gracefully shuts down the server
 func (s *Server) Stop(ctx context.Context) error {
 	s.mu.Lock()
 	if !s.running {
@@ -121,12 +113,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	close(s.shutdown)
 	s.mu.Unlock()
 
-	// Close listener first to stop accepting
 	if s.listener != nil {
 		s.listener.Close()
 	}
 
-	// Stop all active servers
 	s.mu.Lock()
 	for _, srv := range s.servers {
 		srv.Stop()
@@ -137,34 +127,28 @@ func (s *Server) Stop(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
-	// Wait for all servers to finish
 	for _, srv := range servers {
 		srv.Wait()
 	}
 
-	// Remove socket file
 	os.Remove(s.sockPath)
 	return nil
 }
 
-// SocketPath returns the socket path
 func (s *Server) SocketPath() string {
 	return s.sockPath
 }
 
-// Running returns whether the server is running
 func (s *Server) Running() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.running
 }
 
-// Handler is a convenience function for creating a handler from a function
 func Handler[P, R any](fn func(context.Context, *P) (R, error)) handler.Func {
 	return handler.New(fn)
 }
 
-// HandlerFunc is a convenience type for handlers without params
 func HandlerFunc[R any](fn func(context.Context) (R, error)) handler.Func {
 	return handler.New(func(ctx context.Context) (R, error) {
 		return fn(ctx)

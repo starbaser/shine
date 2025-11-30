@@ -6,7 +6,6 @@ import (
 	"unsafe"
 )
 
-// Compile-time size verification
 const (
 	PrismEntrySize        = 80   // bytes per prism entry
 	MaxPrisms             = 16   // max prisms per prismctl instance
@@ -19,7 +18,6 @@ const (
 	NameMaxLen = 63 // max length for names (64 bytes with length prefix)
 )
 
-// PrismEntryState represents the state of a prism
 type PrismEntryState uint8
 
 const (
@@ -38,8 +36,6 @@ func (s PrismEntryState) String() string {
 	}
 }
 
-// PrismEntry is a fixed-size entry for a single prism
-// Total size: 80 bytes
 type PrismEntry struct {
 	NameLen  uint8     // 1 byte: length of name
 	Name     [63]byte  // 63 bytes: name (null-padded)
@@ -50,30 +46,25 @@ type PrismEntry struct {
 	StartMs  int64     // 8 bytes: unix ms when started
 }
 
-// GetName returns the prism name as a string
 func (e *PrismEntry) GetName() string {
 	return string(e.Name[:e.NameLen])
 }
 
-// SetName sets the prism name
 func (e *PrismEntry) SetName(name string) {
 	if len(name) > NameMaxLen {
 		name = name[:NameMaxLen]
 	}
 	e.NameLen = uint8(len(name))
 	copy(e.Name[:], name)
-	// Zero rest of buffer
 	for i := int(e.NameLen); i < NameMaxLen; i++ {
 		e.Name[i] = 0
 	}
 }
 
-// GetState returns the prism state
 func (e *PrismEntry) GetState() PrismEntryState {
 	return PrismEntryState(e.State)
 }
 
-// Uptime returns the duration since the prism started
 func (e *PrismEntry) Uptime() time.Duration {
 	if e.StartMs == 0 {
 		return 0
@@ -81,13 +72,10 @@ func (e *PrismEntry) Uptime() time.Duration {
 	return time.Duration(time.Now().UnixMilli()-e.StartMs) * time.Millisecond
 }
 
-// IsActive returns true if the entry is in use
 func (e *PrismEntry) IsActive() bool {
 	return e.PID != 0
 }
 
-// PrismRuntimeState is the mmap-friendly state structure for prismctl
-// Total size: 1344 bytes
 type PrismRuntimeState struct {
 	Version     uint64           // 8 bytes: sequence counter (odd=writing, even=complete)
 	InstanceLen uint8            // 1 byte: length of instance name
@@ -99,12 +87,10 @@ type PrismRuntimeState struct {
 	Prisms      [16]PrismEntry   // 16 * 80 = 1280 bytes
 }
 
-// GetInstance returns the instance name
 func (s *PrismRuntimeState) GetInstance() string {
 	return string(s.Instance[:s.InstanceLen])
 }
 
-// SetInstance sets the instance name
 func (s *PrismRuntimeState) SetInstance(name string) {
 	if len(name) > NameMaxLen {
 		name = name[:NameMaxLen]
@@ -116,12 +102,10 @@ func (s *PrismRuntimeState) SetInstance(name string) {
 	}
 }
 
-// GetFgPrism returns the foreground prism name
 func (s *PrismRuntimeState) GetFgPrism() string {
 	return string(s.FgPrism[:s.FgPrismLen])
 }
 
-// SetFgPrism sets the foreground prism name
 func (s *PrismRuntimeState) SetFgPrism(name string) {
 	if len(name) > NameMaxLen {
 		name = name[:NameMaxLen]
@@ -133,7 +117,6 @@ func (s *PrismRuntimeState) SetFgPrism(name string) {
 	}
 }
 
-// ActivePrisms returns a slice of active prism entries
 func (s *PrismRuntimeState) ActivePrisms() []PrismEntry {
 	result := make([]PrismEntry, 0, s.PrismCount)
 	for i := 0; i < int(s.PrismCount); i++ {
@@ -144,8 +127,6 @@ func (s *PrismRuntimeState) ActivePrisms() []PrismEntry {
 	return result
 }
 
-// PanelEntry is a fixed-size entry for a single panel
-// Total size: 136 bytes
 type PanelEntry struct {
 	InstanceLen uint8     // 1 byte: length of instance name
 	Instance    [63]byte  // 63 bytes: instance name
@@ -156,12 +137,10 @@ type PanelEntry struct {
 	_padding    [3]byte   // 3 bytes: padding for alignment
 }
 
-// GetInstance returns the panel instance name
 func (e *PanelEntry) GetInstance() string {
 	return string(e.Instance[:e.InstanceLen])
 }
 
-// SetInstance sets the panel instance name
 func (e *PanelEntry) SetInstance(name string) {
 	if len(name) > NameMaxLen {
 		name = name[:NameMaxLen]
@@ -173,12 +152,10 @@ func (e *PanelEntry) SetInstance(name string) {
 	}
 }
 
-// GetName returns the panel name
 func (e *PanelEntry) GetName() string {
 	return string(e.Name[:e.NameLen])
 }
 
-// SetName sets the panel name
 func (e *PanelEntry) SetName(name string) {
 	if len(name) > NameMaxLen {
 		name = name[:NameMaxLen]
@@ -190,18 +167,14 @@ func (e *PanelEntry) SetName(name string) {
 	}
 }
 
-// IsHealthy returns the health status
 func (e *PanelEntry) IsHealthy() bool {
 	return e.Healthy == 1
 }
 
-// IsActive returns true if the entry is in use
 func (e *PanelEntry) IsActive() bool {
 	return e.PID != 0
 }
 
-// ShinedState is the mmap-friendly state structure for shined
-// Total size: 4368 bytes
 type ShinedState struct {
 	Version    uint64           // 8 bytes: sequence counter (odd=writing, even=complete)
 	PanelCount uint8            // 1 byte: number of active panels
@@ -209,7 +182,6 @@ type ShinedState struct {
 	Panels     [32]PanelEntry   // 32 * 136 = 4352 bytes
 }
 
-// ActivePanels returns a slice of active panel entries
 func (s *ShinedState) ActivePanels() []PanelEntry {
 	result := make([]PanelEntry, 0, s.PanelCount)
 	for i := 0; i < int(s.PanelCount); i++ {
@@ -221,7 +193,6 @@ func (s *ShinedState) ActivePanels() []PanelEntry {
 }
 
 func init() {
-	// Verify struct sizes at compile time
 	if size := unsafe.Sizeof(PrismEntry{}); size != PrismEntrySize {
 		panic(fmt.Sprintf("PrismEntry size mismatch: got %d, want %d", size, PrismEntrySize))
 	}

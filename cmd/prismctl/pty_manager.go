@@ -8,7 +8,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// allocatePTY creates a new PTY pair for a child process
 func allocatePTY() (master, slave *os.File, err error) {
 	master, slave, err = pty.Open()
 	if err != nil {
@@ -18,6 +17,7 @@ func allocatePTY() (master, slave *os.File, err error) {
 }
 
 // syncTerminalSize copies terminal size from source FD to target FD
+// will be important function for more complex multiplexing i.e. multi-app/split window
 func syncTerminalSize(sourceFd, targetFd int) error {
 	// Get window size from source terminal
 	sourceWinsize, err := unix.IoctlGetWinsize(sourceFd, unix.TIOCGWINSZ)

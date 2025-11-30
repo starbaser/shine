@@ -25,7 +25,6 @@ func main() {
 	}
 }
 
-// Hyprland workspace types
 type workspace struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
@@ -133,7 +132,6 @@ func (m model) View() string {
 		Bold(true).
 		Padding(0, 1)
 
-	// Render workspaces
 	var workspaceStrs []string
 	for _, ws := range m.workspaces {
 		wsLabel := fmt.Sprintf("%d", ws.ID)
@@ -145,11 +143,8 @@ func (m model) View() string {
 	}
 
 	workspacesView := strings.Join(workspaceStrs, "")
-
-	// Render clock
 	clockView := clockStyle.Render(m.currentTime.Format("15:04:05"))
 
-	// Calculate spacer width
 	contentWidth := lipgloss.Width(workspacesView) + lipgloss.Width(clockView)
 	spacerWidth := m.width - contentWidth
 	if spacerWidth < 0 {
@@ -157,7 +152,6 @@ func (m model) View() string {
 	}
 	spacer := strings.Repeat(" ", spacerWidth)
 
-	// Combine all parts
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		workspacesView,
@@ -166,9 +160,7 @@ func (m model) View() string {
 	)
 }
 
-// getWorkspaces queries Hyprland for workspace information
 func getWorkspaces() ([]workspace, int) {
-	// Get all workspaces
 	cmd := exec.Command("hyprctl", "workspaces", "-j")
 	output, err := cmd.Output()
 	if err != nil {
@@ -180,7 +172,6 @@ func getWorkspaces() ([]workspace, int) {
 		return []workspace{{ID: 1, Name: "1"}}, 1
 	}
 
-	// Get active workspace
 	cmd = exec.Command("hyprctl", "activeworkspace", "-j")
 	output, err = cmd.Output()
 	if err != nil {

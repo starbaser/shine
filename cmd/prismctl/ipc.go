@@ -12,7 +12,6 @@ import (
 	"github.com/starbased-co/shine/pkg/rpc"
 )
 
-// startRPCServer creates and starts the JSON-RPC 2.0 server
 func startRPCServer(instance string, supervisor *supervisor, stateMgr *StateManager) (*rpc.Server, error) {
 	// Create runtime directory
 	runtimeDir := paths.RuntimeDir()
@@ -20,23 +19,18 @@ func startRPCServer(instance string, supervisor *supervisor, stateMgr *StateMana
 		return nil, fmt.Errorf("failed to create runtime directory: %w", err)
 	}
 
-	// Get socket path
 	socketPath := paths.PrismSocket(instance)
 
-	// Create handler map
 	handlers := newRPCHandlers(supervisor, stateMgr)
 
-	// Server options with logging
 	opts := &jrpc2.ServerOptions{
 		Logger: func(text string) {
 			log.Printf("RPC: %s", text)
 		},
 	}
 
-	// Create RPC server
 	server := rpc.NewServer(socketPath, handlers, opts)
 
-	// Start server
 	if err := server.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start RPC server: %w", err)
 	}

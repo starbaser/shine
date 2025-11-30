@@ -83,7 +83,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// Styles
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("14")). // Cyan
 		Bold(true)
@@ -97,7 +96,6 @@ func (m model) View() string {
 		Padding(1, 2).
 		Width(m.width)
 
-	// Build info display
 	lines := []string{
 		lipgloss.JoinHorizontal(lipgloss.Left,
 			labelStyle.Render("Host: "),
@@ -122,7 +120,6 @@ func (m model) View() string {
 	return containerStyle.Render(content)
 }
 
-// getSysInfo retrieves basic system information
 func getSysInfo() sysInfo {
 	info := sysInfo{
 		hostname:   getHostname(),
@@ -162,13 +159,11 @@ func getMemoryUsage() string {
 		return "N/A"
 	}
 
-	// Parse memory line
 	fields := strings.Fields(lines[1])
 	if len(fields) < 3 {
 		return "N/A"
 	}
 
-	// Calculate percentage if available
 	totalStr := strings.TrimSuffix(fields[1], "Gi")
 	usedStr := strings.TrimSuffix(fields[2], "Gi")
 

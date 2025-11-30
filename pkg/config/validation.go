@@ -7,7 +7,6 @@ import (
 	"github.com/starbased-co/shine/pkg/panel"
 )
 
-// Validate checks if the config is valid
 func (c *Config) Validate() error {
 	seen := make(map[string]bool)
 	for name, prism := range c.Prisms {
@@ -26,9 +25,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Validate checks if the PrismConfig is valid
 func (pc *PrismConfig) Validate() error {
-	// Validate apps if multi-app mode
 	if pc.IsMultiApp() {
 		for appName, app := range pc.Apps {
 			if app == nil {
@@ -40,9 +37,7 @@ func (pc *PrismConfig) Validate() error {
 		}
 	}
 
-	// Validate positioning fields using pkg/panel parsers
 	if pc.Origin != "" {
-		// Validate origin is recognized
 		_ = panel.ParseOrigin(pc.Origin)
 	}
 
@@ -65,21 +60,16 @@ func (pc *PrismConfig) Validate() error {
 	}
 
 	if pc.FocusPolicy != "" {
-		// Validate focus policy is recognized
 		_ = panel.ParseFocusPolicy(pc.FocusPolicy)
 	}
 
 	return nil
 }
 
-// Validate checks if the AppConfig is valid
 func (ac *AppConfig) Validate() error {
-	// Path can be empty (defaults to app key name)
-	// Enabled is just a bool, no validation needed
 	return nil
 }
 
-// ValidateRestartPolicy validates restart policy strings
 func ValidateRestartPolicy(policy string) error {
 	switch policy {
 	case "", "no", "on-failure", "unless-stopped", "always":
@@ -89,7 +79,6 @@ func ValidateRestartPolicy(policy string) error {
 	}
 }
 
-// ValidateRestartDelay validates restart delay duration strings
 func ValidateRestartDelay(delay string) error {
 	if delay == "" {
 		return nil

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-// ExpandHome expands ~ to the user's home directory
 func ExpandHome(path string) string {
 	if len(path) == 0 || path[0] != '~' {
 		return path
@@ -21,7 +20,6 @@ func ExpandHome(path string) string {
 	return filepath.Join(home, path[1:])
 }
 
-// ConfigDir returns the shine configuration directory
 func ConfigDir() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, "shine")
@@ -30,7 +28,6 @@ func ConfigDir() string {
 	return filepath.Join(home, ".config", "shine")
 }
 
-// DataDir returns the shine data directory
 func DataDir() string {
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
 		return filepath.Join(xdg, "shine")
@@ -39,38 +36,31 @@ func DataDir() string {
 	return filepath.Join(home, ".local", "share", "shine")
 }
 
-// LogDir returns the shine log directory
 func LogDir() string {
 	return filepath.Join(DataDir(), "logs")
 }
 
-// RuntimeDir returns the shine runtime directory
 func RuntimeDir() string {
 	uid := os.Getuid()
 	return filepath.Join("/run/user", fmt.Sprintf("%d", uid), "shine")
 }
 
-// ShinedSocket returns the path to the shined control socket
 func ShinedSocket() string {
 	return filepath.Join(RuntimeDir(), "shine.sock")
 }
 
-// PrismSocket returns the path to a prism's control socket
 func PrismSocket(instance string) string {
 	return filepath.Join(RuntimeDir(), fmt.Sprintf("prism-%s.sock", instance))
 }
 
-// PrismState returns the path to a prism's mmap state file
 func PrismState(instance string) string {
 	return filepath.Join(RuntimeDir(), fmt.Sprintf("prism-%s.state", instance))
 }
 
-// ShinedState returns the path to the shined mmap state file
 func ShinedState() string {
 	return filepath.Join(RuntimeDir(), "shined.state")
 }
 
-// DefaultConfigPath returns the default configuration file path
 func DefaultConfigPath() string {
 	return filepath.Join(ConfigDir(), "shine.toml")
 }

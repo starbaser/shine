@@ -8,20 +8,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// RenderOptions configures help rendering
 type RenderOptions struct {
 	Width int
 	Style string
 }
 
-// Render renders a help topic using Glamour
 func (r *Registry) Render(topicName string, opts RenderOptions) (string, error) {
-	// If no topic specified, show topic list
 	if topicName == "" {
 		return r.renderTopicList(opts), nil
 	}
 
-	// Special topics
 	switch topicName {
 	case "list":
 		return r.renderTopicList(opts), nil
@@ -29,13 +25,11 @@ func (r *Registry) Render(topicName string, opts RenderOptions) (string, error) 
 		return r.renderCategories(opts), nil
 	}
 
-	// Get specific topic
 	topic, ok := r.Get(topicName)
 	if !ok {
 		return "", fmt.Errorf("topic %q not found", topicName)
 	}
 
-	// Render with Glamour
 	renderer, err := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(opts.Width),
@@ -52,7 +46,6 @@ func (r *Registry) Render(topicName string, opts RenderOptions) (string, error) 
 	return rendered, nil
 }
 
-// renderTopicList renders a list of all topics
 func (r *Registry) renderTopicList(opts RenderOptions) string {
 	var b strings.Builder
 
@@ -78,7 +71,6 @@ func (r *Registry) renderTopicList(opts RenderOptions) string {
 	return b.String()
 }
 
-// renderCategories renders category list
 func (r *Registry) renderCategories(opts RenderOptions) string {
 	var b strings.Builder
 

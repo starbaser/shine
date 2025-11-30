@@ -1,3 +1,24 @@
+// signals.go handles signal propagation with prism-aware routing.
+// Unlike typical process managers, prismctl routes signals differently based
+// on application state:
+//
+// SIGWINCH (window size change)
+//   - Propagated to ALL child PTYs, not just foreground
+//   - Background prisms need correct size for when they become foreground
+//
+// SIGCHLD (child state change)
+//   - Triggered when any child exits/stops
+//   - Reaps ALL exited children in a loop (Wait4 with WNOHANG)
+//   - Exit code: normal exit → status code, signal death → 128 + signal
+//
+// SIGINT (Ctrl+C)
+//   - Kills ONLY the foreground prism (first in MRU list)
+//   - If no prisms running, shuts down prismctl itself
+//   - User can press Ctrl+C repeatedly to kill prisms one by one
+//
+// SIGTERM/SIGHUP
+//   - Full graceful shutdown of all prisms
+
 package main
 
 import (
@@ -14,26 +35,23 @@ type signalHandler struct {
 	supervisor *supervisor
 }
 
-// newSignalHandler creates and configures signal handling
 func newSignalHandler(sup *supervisor) *signalHandler {
 	sh := &signalHandler{
 		sigCh:      make(chan os.Signal, 10),
 		supervisor: sup,
 	}
 
-	// Register for all signals we need to handle
 	signal.Notify(sh.sigCh,
-		unix.SIGCHLD,  // Child process state change
-		unix.SIGTERM,  // Termination request
-		unix.SIGINT,   // Interrupt (Ctrl+C)
-		unix.SIGHUP,   // Hangup (Kitty panel close)
-		unix.SIGWINCH, // Window resize
+		unix.SIGCHLD,
+		unix.SIGTERM,
+		unix.SIGINT,
+		unix.SIGHUP,
+		unix.SIGWINCH,
 	)
 
 	return sh
 }
 
-// run processes signals in a loop until shutdown
 func (sh *signalHandler) run() {
 	for sig := range sh.sigCh {
 		switch sig {
@@ -53,7 +71,6 @@ func (sh *signalHandler) run() {
 	}
 }
 
-// handleSIGCHLD reaps zombie processes and handles child exits
 func (sh *signalHandler) handleSIGCHLD() {
 	// Reap all exited children
 	for {
@@ -107,18 +124,15 @@ func (sh *signalHandler) handleSIGINT() bool {
 	}
 }
 
-// handleShutdown performs graceful shutdown
 func (sh *signalHandler) handleShutdown(sig os.Signal) {
 	log.Printf("Received %s, shutting down gracefully", sig)
 	sh.supervisor.shutdown()
 }
 
-// handleSIGWINCH forwards window resize to ALL child processes
 func (sh *signalHandler) handleSIGWINCH() {
 	sh.supervisor.propagateResize()
 }
 
-// stop stops signal handling
 func (sh *signalHandler) stop() {
 	signal.Stop(sh.sigCh)
 	close(sh.sigCh)

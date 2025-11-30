@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// LayerType represents the Wayland layer shell type
 type LayerType int
 
 const (
@@ -34,7 +33,6 @@ func (lt LayerType) String() string {
 	}
 }
 
-// Origin represents panel origin (anchor point on screen)
 type Origin int
 
 const (
@@ -77,7 +75,6 @@ func (o Origin) String() string {
 	}
 }
 
-// ParseOrigin converts string to Origin
 func ParseOrigin(s string) Origin {
 	switch s {
 	case "top-left":
@@ -105,7 +102,6 @@ func ParseOrigin(s string) Origin {
 	}
 }
 
-// FocusPolicy represents keyboard focus policy
 type FocusPolicy int
 
 const (
@@ -127,7 +123,6 @@ func (fp FocusPolicy) String() string {
 	}
 }
 
-// ParseFocusPolicy converts string to FocusPolicy
 func ParseFocusPolicy(s string) FocusPolicy {
 	switch s {
 	case "not-allowed":
@@ -141,13 +136,11 @@ func ParseFocusPolicy(s string) FocusPolicy {
 	}
 }
 
-// Dimension represents a size value (int for cells or string with "px" for pixels)
 type Dimension struct {
 	Value    int
 	IsPixels bool
 }
 
-// ParseDimension parses a dimension value from either int or string with "px" suffix
 func ParseDimension(v interface{}) (Dimension, error) {
 	switch val := v.(type) {
 	case int:
@@ -175,7 +168,6 @@ func ParseDimension(v interface{}) (Dimension, error) {
 	}
 }
 
-// String formats dimension for CLI args
 func (d Dimension) String() string {
 	if d.IsPixels {
 		return fmt.Sprintf("%dpx", d.Value)
@@ -183,13 +175,11 @@ func (d Dimension) String() string {
 	return strconv.Itoa(d.Value)
 }
 
-// Position represents x,y offset from origin point (in pixels)
 type Position struct {
 	X int
 	Y int
 }
 
-// ParsePosition parses position from "x,y" string
 func ParsePosition(s string) (Position, error) {
 	if s == "" {
 		return Position{}, nil
@@ -213,12 +203,10 @@ func ParsePosition(s string) (Position, error) {
 	return Position{X: x, Y: y}, nil
 }
 
-// String formats position as "x,y"
 func (p Position) String() string {
 	return fmt.Sprintf("%d,%d", p.X, p.Y)
 }
 
-// Config represents layer shell panel configuration
 type Config struct {
 	// Layer shell properties
 	Type        LayerType
@@ -250,7 +238,6 @@ type Config struct {
 	WindowTitle string // Window title for targeting specific windows
 }
 
-// NewConfig creates a default panel configuration
 func NewConfig() *Config {
 	return &Config{
 		Type:          LayerShellPanel,
@@ -264,10 +251,9 @@ func NewConfig() *Config {
 	}
 }
 
-// getMonitorResolution queries Hyprland for monitor dimensions
 func getMonitorResolution(monitorName string) (width, height int, err error) {
 	if monitorName == "" {
-		monitorName = "DP-2" // CRITICAL: Changed from DP-1 to DP-2
+		monitorName = "DP-2"
 	}
 
 	cmd := exec.Command("hyprctl", "monitors", "-j")
@@ -294,7 +280,6 @@ func getMonitorResolution(monitorName string) (width, height int, err error) {
 	return 0, 0, fmt.Errorf("monitor %s not found", monitorName)
 }
 
-// originToEdge converts Origin to kitty edge string
 func (c *Config) originToEdge() string {
 	switch c.Origin {
 	case OriginTopLeft, OriginTopCenter, OriginTopRight:
@@ -314,35 +299,29 @@ func (c *Config) originToEdge() string {
 	}
 }
 
-// calculateMargins computes final margins from origin and position offset
 func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
-	// center-sized uses auto-centering, no margin calculations needed
 	if c.Origin == OriginCenterSized {
 		return 0, 0, 0, 0, nil
 	}
 
-	// Get monitor dimensions
 	monWidth, monHeight, err := getMonitorResolution(c.OutputName)
 	if err != nil {
 		return 0, 0, 0, 0, fmt.Errorf("failed to get monitor resolution: %w", err)
 	}
 
-	// Convert panel dimensions to pixels
 	panelWidth := c.Width.Value
 	if !c.Width.IsPixels {
-		panelWidth = c.Width.Value * 10 // Estimate: 10px per column
+		panelWidth = c.Width.Value * 10
 	}
 
 	panelHeight := c.Height.Value
 	if !c.Height.IsPixels {
-		panelHeight = c.Height.Value * 20 // Estimate: 20px per line
+		panelHeight = c.Height.Value * 20
 	}
 
-	// Get position offset
 	offsetX := c.Position.X
 	offsetY := c.Position.Y
 
-	// Calculate margins based on origin point
 	switch c.Origin {
 	case OriginTopLeft:
 		left = offsetX
@@ -361,9 +340,8 @@ func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
 		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 
 	case OriginCenter:
-		// CRITICAL: edge=center anchors to ALL sides, so we MUST set all four margins
-		// to properly center and size the panel. Kitty will shrink the panel and place
-		// it using these margin constraints.
+		// edge=center anchors to ALL sides, so we MUST set all four margins
+		// to properly center and size the panel. Kitty will shrink the panel and place it using these margin constraints.
 		left = (monWidth / 2) - (panelWidth / 2) + offsetX
 		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 		right = (monWidth / 2) - (panelWidth / 2) - offsetX
@@ -386,7 +364,6 @@ func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
 		bottom = offsetY
 
 	default:
-		// Default to center with all four margins
 		left = (monWidth / 2) - (panelWidth / 2) + offsetX
 		top = (monHeight / 2) - (panelHeight / 2) + offsetY
 		right = (monWidth / 2) - (panelWidth / 2) - offsetX
@@ -396,7 +373,6 @@ func (c *Config) calculateMargins() (top, left, bottom, right int, err error) {
 	return top, left, bottom, right, nil
 }
 
-// ToRemoteControlArgs converts Config to kitty @ launch arguments
 func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 	args := []string{
 		"@",
@@ -404,10 +380,8 @@ func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 		"--type=os-panel",
 	}
 
-	// Panel properties via --os-panel
 	panelProps := []string{}
 
-	// Edge (derived from origin)
 	edgeStr := c.originToEdge()
 	if edgeStr != "" {
 		panelProps = append(panelProps, fmt.Sprintf("edge=%s", edgeStr))
@@ -421,7 +395,6 @@ func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 		panelProps = append(panelProps, fmt.Sprintf("lines=%s", c.Height.String()))
 	}
 
-	// Calculate and apply margins
 	top, left, bottom, right, err := c.calculateMargins()
 	if err == nil {
 		if top > 0 {
@@ -443,36 +416,29 @@ func (c *Config) ToRemoteControlArgs(componentPath string) []string {
 		panelProps = append(panelProps, fmt.Sprintf("focus-policy=%s", c.FocusPolicy.String()))
 	}
 
-	// Output name
 	if c.OutputName != "" {
 		panelProps = append(panelProps, fmt.Sprintf("output-name=%s", c.OutputName))
 	}
 
-	// Add each panel property with its own --os-panel flag
 	for _, prop := range panelProps {
 		args = append(args, "--os-panel", prop)
 	}
 
-	// Window title
 	if c.WindowTitle != "" {
 		args = append(args, "--title", c.WindowTitle)
 	}
 
-	// Component path
 	args = append(args, componentPath)
 
 	return args
 }
 
-// ToKittenArgs converts Config to kitten panel CLI arguments
 func (c *Config) ToKittenArgs(component string) []string {
 	args := []string{"panel"}
 
-	// Edge (derived from origin)
 	edgeStr := c.originToEdge()
 	args = append(args, "--edge="+edgeStr)
 
-	// Layer type
 	if c.Type != LayerShellPanel {
 		args = append(args, "--layer="+c.Type.String())
 	}
@@ -485,7 +451,6 @@ func (c *Config) ToKittenArgs(component string) []string {
 		args = append(args, "--lines="+c.Height.String())
 	}
 
-	// Calculate margins
 	top, left, bottom, right, err := c.calculateMargins()
 	if err == nil {
 		if top > 0 {
@@ -507,13 +472,11 @@ func (c *Config) ToKittenArgs(component string) []string {
 		args = append(args, "--focus-policy="+c.FocusPolicy.String())
 	}
 
-	// Exclusive zone
 	if c.OverrideExclusiveZone {
 		args = append(args, fmt.Sprintf("--exclusive-zone=%d", c.ExclusiveZone))
 		args = append(args, "--override-exclusive-zone")
 	}
 
-	// Behavior flags
 	if c.HideOnFocusLoss {
 		args = append(args, "--hide-on-focus-loss")
 	}
@@ -523,18 +486,15 @@ func (c *Config) ToKittenArgs(component string) []string {
 		args = append(args, "--toggle-visibility")
 	}
 
-	// Output (CRITICAL: Must be DP-2)
 	if c.OutputName != "" {
 		args = append(args, "--output-name="+c.OutputName)
 	}
 
-	// Remote control
 	if c.ListenSocket != "" {
 		args = append(args, "-o", "allow_remote_control=socket-only")
 		args = append(args, "-o", "listen_on=unix:"+c.ListenSocket)
 	}
 
-	// Component binary
 	args = append(args, component)
 
 	return args

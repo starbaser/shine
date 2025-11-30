@@ -1,3 +1,7 @@
+// handlers.go implements the prism control plane RPC methods.
+// Receives app configuration from shined and starts the apps.
+// Exposes up/down/fg/bg operations for prism lifecycle management.
+
 package main
 
 import (
@@ -8,13 +12,11 @@ import (
 	"github.com/starbased-co/shine/pkg/rpc"
 )
 
-// rpcHandlers holds references to supervisor and state for handling RPC calls
 type rpcHandlers struct {
 	supervisor   *supervisor
 	stateManager *StateManager
 }
 
-// newRPCHandlers creates RPC method handlers
 func newRPCHandlers(sup *supervisor, stateMgr *StateManager) handler.Map {
 	h := &rpcHandlers{
 		supervisor:   sup,
@@ -33,7 +35,6 @@ func newRPCHandlers(sup *supervisor, stateMgr *StateManager) handler.Map {
 	}
 }
 
-// handleConfigure receives app configuration from shined and starts apps
 func (h *rpcHandlers) handleConfigure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResult, error) {
 	log.Printf("RPC: prism/configure with %d apps", len(req.Apps))
 
@@ -63,7 +64,6 @@ func (h *rpcHandlers) handleConfigure(ctx context.Context, req *rpc.ConfigureReq
 	return result, nil
 }
 
-// handleUp starts or resumes a prism (idempotent)
 func (h *rpcHandlers) handleUp(ctx context.Context, req *rpc.UpRequest) (*rpc.UpResult, error) {
 	if req.Name == "" {
 		return nil, rpc.ErrInvalidParams("name is required")
@@ -96,7 +96,6 @@ func (h *rpcHandlers) handleUp(ctx context.Context, req *rpc.UpRequest) (*rpc.Up
 	}, nil
 }
 
-// handleDown stops a prism
 func (h *rpcHandlers) handleDown(ctx context.Context, req *rpc.DownRequest) (*rpc.DownResult, error) {
 	if req.Name == "" {
 		return nil, rpc.ErrInvalidParams("name is required")
@@ -113,7 +112,6 @@ func (h *rpcHandlers) handleDown(ctx context.Context, req *rpc.DownRequest) (*rp
 	}, nil
 }
 
-// handleFg brings prism to foreground (idempotent)
 func (h *rpcHandlers) handleFg(ctx context.Context, req *rpc.FgRequest) (*rpc.FgResult, error) {
 	if req.Name == "" {
 		return nil, rpc.ErrInvalidParams("name is required")
@@ -150,7 +148,6 @@ func (h *rpcHandlers) handleFg(ctx context.Context, req *rpc.FgRequest) (*rpc.Fg
 	}, nil
 }
 
-// handleBg sends prism to background (idempotent, not implemented yet)
 func (h *rpcHandlers) handleBg(ctx context.Context, req *rpc.BgRequest) (*rpc.BgResult, error) {
 	if req.Name == "" {
 		return nil, rpc.ErrInvalidParams("name is required")
@@ -182,7 +179,6 @@ func (h *rpcHandlers) handleBg(ctx context.Context, req *rpc.BgRequest) (*rpc.Bg
 	}, nil
 }
 
-// handleList returns list of all prisms with their states
 func (h *rpcHandlers) handleList(ctx context.Context) (*rpc.ListResult, error) {
 	log.Printf("RPC: prism/list")
 
@@ -210,7 +206,6 @@ func (h *rpcHandlers) handleList(ctx context.Context) (*rpc.ListResult, error) {
 	}, nil
 }
 
-// handleHealth returns health check status
 func (h *rpcHandlers) handleHealth(ctx context.Context) (*rpc.HealthResult, error) {
 	log.Printf("RPC: service/health")
 
@@ -223,7 +218,6 @@ func (h *rpcHandlers) handleHealth(ctx context.Context) (*rpc.HealthResult, erro
 	}, nil
 }
 
-// handleShutdown initiates graceful shutdown
 func (h *rpcHandlers) handleShutdown(ctx context.Context, req *rpc.ShutdownRequest) (*rpc.ShutdownResult, error) {
 	log.Printf("RPC: service/shutdown (graceful=%v)", req.Graceful)
 

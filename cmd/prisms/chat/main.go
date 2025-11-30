@@ -57,7 +57,6 @@ func initialModel() model {
 	ta.SetWidth(30)
 	ta.SetHeight(3)
 
-	// Remove cursor line styling
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 
 	ta.ShowLineNumbers = false
@@ -97,7 +96,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(gap)
 
 		if len(m.messages) > 0 {
-			// Wrap content before setting it.
 			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
 		}
 		m.viewport.GotoBottom()

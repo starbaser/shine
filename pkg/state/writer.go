@@ -8,14 +8,12 @@ import (
 	"unsafe"
 )
 
-// PrismStateWriter writes prism state to an mmap file with sequence counting
 type PrismStateWriter struct {
 	mu   sync.Mutex
 	mmap *MappedFile
 	ptr  *PrismRuntimeState
 }
 
-// NewPrismStateWriter creates a new state writer
 func NewPrismStateWriter(path string) (*PrismStateWriter, error) {
 	mmap, err := CreateMappedFile(path, PrismRuntimeStateSize)
 	if err != nil {
@@ -23,7 +21,6 @@ func NewPrismStateWriter(path string) (*PrismStateWriter, error) {
 	}
 
 	ptr := (*PrismRuntimeState)(mmap.AsPtr())
-	// Initialize version to 0 (even = complete state)
 	atomic.StoreUint64(&ptr.Version, 0)
 
 	return &PrismStateWriter{
@@ -32,7 +29,6 @@ func NewPrismStateWriter(path string) (*PrismStateWriter, error) {
 	}, nil
 }
 
-// SetInstance sets the instance name
 func (w *PrismStateWriter) SetInstance(name string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -42,7 +38,6 @@ func (w *PrismStateWriter) SetInstance(name string) {
 	w.endWrite()
 }
 
-// Update atomically updates the state
 func (w *PrismStateWriter) Update(fn func(*PrismRuntimeState)) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -52,7 +47,6 @@ func (w *PrismStateWriter) Update(fn func(*PrismRuntimeState)) {
 	w.endWrite()
 }
 
-// SetPrism updates a prism entry
 func (w *PrismStateWriter) SetPrism(index int, name string, pid int32, state PrismEntryState, restarts uint8, startMs int64) error {
 	if index < 0 || index >= MaxPrisms {
 		return fmt.Errorf("prism index out of range: %d", index)
@@ -70,7 +64,6 @@ func (w *PrismStateWriter) SetPrism(index int, name string, pid int32, state Pri
 	entry.Restarts = restarts
 	entry.StartMs = startMs
 
-	// Update count if this is a new entry
 	if index >= int(w.ptr.PrismCount) {
 		w.ptr.PrismCount = uint8(index + 1)
 	}
@@ -79,14 +72,12 @@ func (w *PrismStateWriter) SetPrism(index int, name string, pid int32, state Pri
 	return nil
 }
 
-// RemovePrism clears a prism entry and compacts the array
 func (w *PrismStateWriter) RemovePrism(name string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	w.beginWrite()
 
-	// Find and remove the prism
 	found := -1
 	for i := 0; i < int(w.ptr.PrismCount); i++ {
 		if w.ptr.Prisms[i].GetName() == name {
@@ -96,11 +87,9 @@ func (w *PrismStateWriter) RemovePrism(name string) {
 	}
 
 	if found >= 0 {
-		// Shift remaining entries down
 		for i := found; i < int(w.ptr.PrismCount)-1; i++ {
 			w.ptr.Prisms[i] = w.ptr.Prisms[i+1]
 		}
-		// Clear last entry
 		w.ptr.Prisms[w.ptr.PrismCount-1] = PrismEntry{}
 		w.ptr.PrismCount--
 	}
@@ -108,7 +97,6 @@ func (w *PrismStateWriter) RemovePrism(name string) {
 	w.endWrite()
 }
 
-// SetForeground sets the foreground prism
 func (w *PrismStateWriter) SetForeground(name string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -117,7 +105,6 @@ func (w *PrismStateWriter) SetForeground(name string) {
 
 	w.ptr.SetFgPrism(name)
 
-	// Update state flags
 	for i := 0; i < int(w.ptr.PrismCount); i++ {
 		if w.ptr.Prisms[i].GetName() == name {
 			w.ptr.Prisms[i].State = uint8(PrismStateFg)
@@ -129,7 +116,6 @@ func (w *PrismStateWriter) SetForeground(name string) {
 	w.endWrite()
 }
 
-// AddPrism adds a new prism and returns its index
 func (w *PrismStateWriter) AddPrism(name string, pid int32, fg bool) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -147,7 +133,6 @@ func (w *PrismStateWriter) AddPrism(name string, pid int32, fg bool) (int, error
 	if fg {
 		entry.State = uint8(PrismStateFg)
 		w.ptr.SetFgPrism(name)
-		// Set all others to background
 		for i := 0; i < idx; i++ {
 			w.ptr.Prisms[i].State = uint8(PrismStateBg)
 		}
@@ -162,47 +147,39 @@ func (w *PrismStateWriter) AddPrism(name string, pid int32, fg bool) (int, error
 	return idx, nil
 }
 
-// beginWrite increments version to odd (writing state)
 func (w *PrismStateWriter) beginWrite() {
 	v := atomic.LoadUint64(&w.ptr.Version)
 	atomic.StoreUint64(&w.ptr.Version, v+1)
 }
 
-// endWrite increments version to even (complete state) and syncs
 func (w *PrismStateWriter) endWrite() {
 	v := atomic.LoadUint64(&w.ptr.Version)
 	atomic.StoreUint64(&w.ptr.Version, v+1)
 	w.mmap.Sync()
 }
 
-// Sync forces a sync to disk
 func (w *PrismStateWriter) Sync() error {
 	return w.mmap.Sync()
 }
 
-// Close closes the writer
 func (w *PrismStateWriter) Close() error {
 	return w.mmap.Close()
 }
 
-// Remove closes and removes the state file
 func (w *PrismStateWriter) Remove() error {
 	return w.mmap.Remove()
 }
 
-// Path returns the state file path
 func (w *PrismStateWriter) Path() string {
 	return w.mmap.Path()
 }
 
-// ShinedStateWriter writes shined state to an mmap file
 type ShinedStateWriter struct {
 	mu   sync.Mutex
 	mmap *MappedFile
 	ptr  *ShinedState
 }
 
-// NewShinedStateWriter creates a new shined state writer
 func NewShinedStateWriter(path string) (*ShinedStateWriter, error) {
 	mmap, err := CreateMappedFile(path, ShinedStateSize)
 	if err != nil {
@@ -218,7 +195,6 @@ func NewShinedStateWriter(path string) (*ShinedStateWriter, error) {
 	}, nil
 }
 
-// Update atomically updates the state
 func (w *ShinedStateWriter) Update(fn func(*ShinedState)) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -228,7 +204,6 @@ func (w *ShinedStateWriter) Update(fn func(*ShinedState)) {
 	w.endWrite()
 }
 
-// AddPanel adds a new panel
 func (w *ShinedStateWriter) AddPanel(instance, name string, pid int32, healthy bool) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -255,7 +230,6 @@ func (w *ShinedStateWriter) AddPanel(instance, name string, pid int32, healthy b
 	return idx, nil
 }
 
-// RemovePanel removes a panel by instance name
 func (w *ShinedStateWriter) RemovePanel(instance string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -281,7 +255,6 @@ func (w *ShinedStateWriter) RemovePanel(instance string) {
 	w.endWrite()
 }
 
-// SetPanelHealth updates a panel's health status
 func (w *ShinedStateWriter) SetPanelHealth(instance string, healthy bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -313,22 +286,18 @@ func (w *ShinedStateWriter) endWrite() {
 	w.mmap.Sync()
 }
 
-// Sync forces a sync to disk
 func (w *ShinedStateWriter) Sync() error {
 	return w.mmap.Sync()
 }
 
-// Close closes the writer
 func (w *ShinedStateWriter) Close() error {
 	return w.mmap.Close()
 }
 
-// Remove closes and removes the state file
 func (w *ShinedStateWriter) Remove() error {
 	return w.mmap.Remove()
 }
 
-// Path returns the state file path
 func (w *ShinedStateWriter) Path() string {
 	return w.mmap.Path()
 }

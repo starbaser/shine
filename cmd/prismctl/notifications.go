@@ -10,7 +10,6 @@ import (
 	"github.com/starbased-co/shine/pkg/rpc"
 )
 
-// NotificationManager handles bidirectional notifications to shined
 // with graceful degradation when shined is unavailable
 type NotificationManager struct {
 	mu         sync.Mutex
@@ -21,7 +20,6 @@ type NotificationManager struct {
 	stopC      chan struct{}
 }
 
-// newNotificationManager creates a notification manager
 func newNotificationManager(instance string) *NotificationManager {
 	nm := &NotificationManager{
 		instance:   instance,
@@ -36,7 +34,7 @@ func newNotificationManager(instance string) *NotificationManager {
 	return nm
 }
 
-// connectionLoop attempts to connect and reconnect to shined
+// connectionLoop maintains connection+reconnection to shined
 func (nm *NotificationManager) connectionLoop() {
 	backoff := time.Second
 	maxBackoff := 30 * time.Second
@@ -56,7 +54,6 @@ func (nm *NotificationManager) connectionLoop() {
 		nm.mu.Unlock()
 
 		if connected {
-			// Already connected, reset backoff and wait
 			backoff = time.Second
 			time.Sleep(5 * time.Second)
 			continue
@@ -68,7 +65,6 @@ func (nm *NotificationManager) connectionLoop() {
 
 		nm.mu.Lock()
 		if err != nil {
-			// Connection failed - increase backoff
 			if backoff < maxBackoff {
 				backoff *= 2
 				if backoff > maxBackoff {
@@ -97,7 +93,6 @@ func (nm *NotificationManager) tryReconnect() {
 	}
 }
 
-// sendNotification sends a notification with graceful failure
 func (nm *NotificationManager) sendNotification(fn func(context.Context, *rpc.ShinedClient) error) {
 	nm.mu.Lock()
 	client := nm.client
@@ -109,7 +104,7 @@ func (nm *NotificationManager) sendNotification(fn func(context.Context, *rpc.Sh
 		return
 	}
 
-	// Create short timeout context for notification
+	// Sends notification (no expectation of response, 0.5s timeout is generous for catching immediate error)
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
@@ -161,7 +156,6 @@ func (nm *NotificationManager) OnSurfaceSwitched(from, to string) {
 	})
 }
 
-// Close closes the notification manager and connection
 func (nm *NotificationManager) Close() {
 	close(nm.stopC)
 

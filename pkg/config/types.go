@@ -2,7 +2,6 @@ package config
 
 import "github.com/starbased-co/shine/pkg/panel"
 
-// AppConfig defines a single app within a prism (multi-app mode)
 type AppConfig struct {
 	// Path specifies the binary name or path
 	// If empty, defaults to app key name
@@ -15,13 +14,11 @@ type AppConfig struct {
 	ResolvedPath string `toml:"-"`
 }
 
-// Config represents the main shine configuration
 type Config struct {
 	Core   *CoreConfig             `toml:"core"`
 	Prisms map[string]*PrismConfig `toml:"prisms"`
 }
 
-// CoreConfig holds global shine settings
 type CoreConfig struct {
 	// Path specifies directories to prepend to PATH for prism binary discovery
 	// Can be a single string or array of strings
@@ -30,7 +27,6 @@ type CoreConfig struct {
 }
 
 // GetPaths normalizes the Path field to []string
-// Handles both string and []string types
 func (cc *CoreConfig) GetPaths() []string {
 	if cc.Path == nil {
 		return []string{}
@@ -101,14 +97,13 @@ type PrismConfig struct {
 	ResolvedPath string `toml:"-"`
 }
 
-// IsMultiApp returns true if this prism uses multi-app configuration
 func (pc *PrismConfig) IsMultiApp() bool {
 	return len(pc.Apps) > 0
 }
 
-// GetApps returns normalized app configurations
-// For single-app mode (Path set), returns a synthetic single-app map
-// For multi-app mode, returns the Apps map
+// GetApps returns normalized app configurations.
+// Single-app mode (Path set): returns synthetic single-app map
+// Multi-app mode: returns Apps map
 func (pc *PrismConfig) GetApps() map[string]*AppConfig {
 	if pc.IsMultiApp() {
 		return pc.Apps
@@ -127,41 +122,26 @@ func (pc *PrismConfig) GetApps() map[string]*AppConfig {
 	return nil
 }
 
-// ToPanelConfig converts PrismConfig to panel.Config
 func (pc *PrismConfig) ToPanelConfig() *panel.Config {
 	cfg := panel.NewConfig()
 
-	// Origin
 	if pc.Origin != "" {
 		cfg.Origin = panel.ParseOrigin(pc.Origin)
 	}
 
-	// Size
-	var err error
 	if pc.Width != nil {
-		cfg.Width, err = panel.ParseDimension(pc.Width)
-		if err != nil {
-			// Keep default on error
-		}
+		cfg.Width, _ = panel.ParseDimension(pc.Width)
 	}
 
 	if pc.Height != nil {
-		cfg.Height, err = panel.ParseDimension(pc.Height)
-		if err != nil {
-			// Keep default on error
-		}
+		cfg.Height, _ = panel.ParseDimension(pc.Height)
 	}
 
-	// Position offset from origin
 	if pc.Position != "" {
-		cfg.Position, err = panel.ParsePosition(pc.Position)
-		// Silently ignore position parse errors, keep default
+		cfg.Position, _ = panel.ParsePosition(pc.Position)
 	}
 
-	// Behavior
 	cfg.HideOnFocusLoss = pc.HideOnFocusLoss
-
-	// Focus policy
 	cfg.FocusPolicy = panel.ParseFocusPolicy(pc.FocusPolicy)
 
 	// If hide_on_focus_loss is enabled, ensure focus policy is on-demand
@@ -169,16 +149,12 @@ func (pc *PrismConfig) ToPanelConfig() *panel.Config {
 		cfg.FocusPolicy = panel.FocusOnDemand
 	}
 
-	// Output
 	cfg.OutputName = pc.OutputName
-
-	// Remote control socket (shared across all components)
 	cfg.ListenSocket = "/tmp/shine.sock"
 
 	return cfg
 }
 
-// NewDefaultConfig creates a default configuration
 func NewDefaultConfig() *Config {
 	return &Config{
 		Core: &CoreConfig{

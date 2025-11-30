@@ -14,14 +14,12 @@ type StateManager struct {
 	instance string
 }
 
-// newStateManager creates a new state manager
 func newStateManager(statePath, instance string) (*StateManager, error) {
 	writer, err := state.NewPrismStateWriter(statePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Initialize instance name
 	writer.SetInstance(instance)
 
 	return &StateManager{
@@ -30,17 +28,14 @@ func newStateManager(statePath, instance string) (*StateManager, error) {
 	}, nil
 }
 
-// OnPrismStarted is called when a prism starts or launches
 func (s *StateManager) OnPrismStarted(name string, pid int, fg bool) {
 	log.Printf("State: prism started %s (PID %d, fg=%v)", name, pid, fg)
 
-	// Add prism to state
 	if _, err := s.writer.AddPrism(name, int32(pid), fg); err != nil {
 		log.Printf("Warning: failed to add prism to state: %v", err)
 	}
 }
 
-// OnPrismStopped is called when a prism stops or is killed
 func (s *StateManager) OnPrismStopped(name string) {
 	log.Printf("State: prism stopped %s", name)
 
@@ -48,7 +43,6 @@ func (s *StateManager) OnPrismStopped(name string) {
 	s.writer.RemovePrism(name)
 }
 
-// OnForegroundChanged is called when foreground prism changes
 func (s *StateManager) OnForegroundChanged(name string) {
 	log.Printf("State: foreground changed to %s", name)
 
@@ -56,8 +50,7 @@ func (s *StateManager) OnForegroundChanged(name string) {
 	s.writer.SetForeground(name)
 }
 
-// OnPrismResumed is called when a background prism is resumed to foreground
-// This is handled by OnForegroundChanged
+// OnPrismResumed is called when a suspended prism receives SIGCONT
 func (s *StateManager) OnPrismResumed(name string) {
 	s.OnForegroundChanged(name)
 }
