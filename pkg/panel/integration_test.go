@@ -38,8 +38,9 @@ func TestPanelArgsGeneration(t *testing.T) {
 		t.Error("Missing focus-policy=on-demand")
 	}
 
-	if !strings.Contains(argsStr, "output-name=DP-2") {
-		t.Error("Missing output-name=DP-2")
+	// OutputName empty by default - should NOT appear in args (kitty uses focused monitor)
+	if strings.Contains(argsStr, "output-name=") {
+		t.Error("Empty OutputName should not generate output-name arg")
 	}
 }
 

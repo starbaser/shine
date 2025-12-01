@@ -141,6 +141,7 @@ type Dimension struct {
 	IsPixels bool
 }
 
+// TODO: add percentage units+more?
 func ParseDimension(v interface{}) (Dimension, error) {
 	switch val := v.(type) {
 	case int:
@@ -222,7 +223,7 @@ type Config struct {
 	HideOnFocusLoss  bool
 	ToggleVisibility bool
 
-	OutputName   string // Monitor name (e.g., "DP-2") - CRITICAL: Must be DP-2, never DP-1
+	OutputName   string // Monitor name (e.g., "DP-1"); empty = focused monitor
 	ListenSocket string // Unix socket path
 	WindowTitle  string // Window title for targeting specific windows
 }
@@ -236,15 +237,10 @@ func NewConfig() *Config {
 		Height:        Dimension{Value: 1, IsPixels: false},
 		Position:      Position{X: 0, Y: 0},
 		ExclusiveZone: -1, // Auto
-		OutputName:    "DP-2", // CRITICAL: Default to DP-2
 	}
 }
 
 func getMonitorResolution(monitorName string) (width, height int, err error) {
-	if monitorName == "" {
-		monitorName = "DP-2"
-	}
-
 	cmd := exec.Command("hyprctl", "monitors", "-j")
 	output, err := cmd.Output()
 	if err != nil {
@@ -257,7 +253,22 @@ func getMonitorResolution(monitorName string) (width, height int, err error) {
 	}
 
 	for _, mon := range monitors {
-		if name, ok := mon["name"].(string); ok && name == monitorName {
+		name, _ := mon["name"].(string)
+
+		// If no monitor specified, use the focused one
+		if monitorName == "" {
+			if focused, ok := mon["focused"].(bool); ok && focused {
+				if w, ok := mon["width"].(float64); ok {
+					if h, ok := mon["height"].(float64); ok {
+						return int(w), int(h), nil
+					}
+				}
+			}
+			continue
+		}
+
+		// Match by name
+		if name == monitorName {
 			if w, ok := mon["width"].(float64); ok {
 				if h, ok := mon["height"].(float64); ok {
 					return int(w), int(h), nil
@@ -266,6 +277,9 @@ func getMonitorResolution(monitorName string) (width, height int, err error) {
 		}
 	}
 
+	if monitorName == "" {
+		return 0, 0, fmt.Errorf("no focused monitor found")
+	}
 	return 0, 0, fmt.Errorf("monitor %s not found", monitorName)
 }
 

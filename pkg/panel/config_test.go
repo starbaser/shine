@@ -244,8 +244,8 @@ func TestNewConfig(t *testing.T) {
 		t.Errorf("NewConfig().Origin = %v, want %v", cfg.Origin, OriginTopLeft)
 	}
 
-	if cfg.OutputName != "DP-2" {
-		t.Errorf("NewConfig().OutputName = %q, want %q", cfg.OutputName, "DP-2")
+	if cfg.OutputName != "" {
+		t.Errorf("NewConfig().OutputName = %q, want empty string (uses focused monitor)", cfg.OutputName)
 	}
 
 	if cfg.Type != LayerShellPanel {
