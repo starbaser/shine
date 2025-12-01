@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/starbased-co/shine/cmd/prisms/internal/theme"
 )
 
 func main() {
@@ -33,22 +34,49 @@ type tickMsg time.Time
 type sysInfo struct {
 	hostname   string
 	uptime     string
-	cpuPercent string
-	memPercent string
+	cpuUsage   float64 // 0.0-1.0
+	memUsage   float64 // 0.0-1.0
+	lastUpdate time.Time
 }
 
 type model struct {
-	info   sysInfo
-	width  int
-	height int
+	info      sysInfo
+	width     int
+	height    int
+	cpuBar    progress.Model
+	memBar    progress.Model
+	prevCPU   cpuStat
+}
+
+type cpuStat struct {
+	user   uint64
+	system uint64
+	idle   uint64
 }
 
 func initialModel() model {
-	return model{
+	// Initialize progress bars
+	cpuBar := progress.New(
+		progress.WithDefaultGradient(),
+		progress.WithWidth(20),
+	)
+	memBar := progress.New(
+		progress.WithDefaultGradient(),
+		progress.WithWidth(20),
+	)
+
+	m := model{
 		info:   getSysInfo(),
 		width:  30,
 		height: 10,
+		cpuBar: cpuBar,
+		memBar: memBar,
 	}
+
+	// Get initial CPU stat
+	m.prevCPU = getCPUStat()
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -75,7 +103,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tickMsg:
-		m.info = getSysInfo()
+		// Calculate CPU usage
+		currentCPU := getCPUStat()
+		m.info.cpuUsage = calculateCPUUsage(m.prevCPU, currentCPU)
+		m.prevCPU = currentCPU
+
+		// Update other info
+		m.info.hostname = getHostname()
+		m.info.uptime = getUptime()
+		m.info.memUsage = getMemoryUsage()
+		m.info.lastUpdate = time.Time(msg)
+
 		return m, tickCmd()
 	}
 
@@ -83,49 +121,80 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	labelStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("14")). // Cyan
-		Bold(true)
+	// Create title
+	title := theme.TitleStyle().Render("sysinfo")
 
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")) // White
+	// Create info rows with icons
+	hostLabel := theme.TextStyle().Bold(true).Render("Host:")
+	hostValue := theme.TextStyle().Render(m.info.hostname)
+	hostRow := lipgloss.JoinHorizontal(lipgloss.Left, hostLabel, " ", hostValue)
 
-	containerStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("14")).
-		Padding(1, 2).
-		Width(m.width)
+	uptimeLabel := theme.TextStyle().Bold(true).Render("Uptime:")
+	uptimeValue := theme.TextStyle().Render(m.info.uptime)
+	uptimeRow := lipgloss.JoinHorizontal(lipgloss.Left, uptimeLabel, " ", uptimeValue)
 
-	lines := []string{
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render("Host: "),
-			valueStyle.Render(m.info.hostname),
-		),
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render("Uptime: "),
-			valueStyle.Render(m.info.uptime),
-		),
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render("CPU: "),
-			valueStyle.Render(m.info.cpuPercent),
-		),
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			labelStyle.Render("Memory: "),
-			valueStyle.Render(m.info.memPercent),
-		),
+	// CPU progress bar with dynamic color
+	cpuColor := getStatusColor(m.info.cpuUsage)
+	cpuBar := m.cpuBar.ViewAs(m.info.cpuUsage)
+	cpuPercent := theme.TextStyle().Foreground(cpuColor).Render(fmt.Sprintf("%.0f%%", m.info.cpuUsage*100))
+	cpuIcon := theme.TextStyle().Render(theme.IconCPU)
+	cpuLabel := theme.TextStyle().Bold(true).Render("CPU:")
+	cpuRow := lipgloss.JoinHorizontal(lipgloss.Left,
+		cpuIcon, " ", cpuLabel, " ", cpuBar, " ", cpuPercent,
+	)
+
+	// Memory progress bar with dynamic color
+	memColor := getStatusColor(m.info.memUsage)
+	memBar := m.memBar.ViewAs(m.info.memUsage)
+	memPercent := theme.TextStyle().Foreground(memColor).Render(fmt.Sprintf("%.0f%%", m.info.memUsage*100))
+	memIcon := theme.TextStyle().Render(theme.IconMemory)
+	memLabel := theme.TextStyle().Bold(true).Render("RAM:")
+	memRow := lipgloss.JoinHorizontal(lipgloss.Left,
+		memIcon, " ", memLabel, " ", memBar, " ", memPercent,
+	)
+
+	// Last update timestamp
+	updateText := fmt.Sprintf("Updated %ds ago", int(time.Since(m.info.lastUpdate).Seconds()))
+	updateRow := theme.MutedTextStyle().Render(updateText)
+
+	// Compose all rows
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		hostRow,
+		uptimeRow,
+		"",
+		cpuRow,
+		memRow,
+		"",
+		updateRow,
+	)
+
+	// Apply glass panel style
+	return theme.GlassPanel().Render(content)
+}
+
+// getStatusColor returns appropriate color based on usage percentage
+func getStatusColor(usage float64) lipgloss.TerminalColor {
+	t := theme.Current()
+	switch {
+	case usage >= 0.80:
+		return t.Error() // Red for >80%
+	case usage >= 0.50:
+		return t.Warning() // Yellow for 50-80%
+	default:
+		return t.Success() // Green for <50%
 	}
-
-	content := strings.Join(lines, "\n")
-
-	return containerStyle.Render(content)
 }
 
 func getSysInfo() sysInfo {
 	info := sysInfo{
 		hostname:   getHostname(),
 		uptime:     getUptime(),
-		cpuPercent: "N/A",
-		memPercent: getMemoryUsage(),
+		cpuUsage:   0.0,
+		memUsage:   getMemoryUsage(),
+		lastUpdate: time.Now(),
 	}
 	return info
 }
@@ -139,41 +208,105 @@ func getHostname() string {
 }
 
 func getUptime() string {
-	cmd := exec.Command("uptime", "-p")
-	output, err := cmd.Output()
+	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
 		return "N/A"
 	}
-	return strings.TrimSpace(string(output))
+
+	fields := strings.Fields(string(data))
+	if len(fields) < 1 {
+		return "N/A"
+	}
+
+	seconds, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return "N/A"
+	}
+
+	days := int(seconds / 86400)
+	hours := int((seconds - float64(days*86400)) / 3600)
+
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh", days, hours)
+	}
+	return fmt.Sprintf("%dh", hours)
 }
 
-func getMemoryUsage() string {
-	cmd := exec.Command("free", "-h")
-	output, err := cmd.Output()
+func getCPUStat() cpuStat {
+	data, err := os.ReadFile("/proc/stat")
 	if err != nil {
-		return "N/A"
+		return cpuStat{}
 	}
 
-	lines := strings.Split(string(output), "\n")
-	if len(lines) < 2 {
-		return "N/A"
+	lines := strings.Split(string(data), "\n")
+	if len(lines) < 1 {
+		return cpuStat{}
 	}
 
-	fields := strings.Fields(lines[1])
-	if len(fields) < 3 {
-		return "N/A"
+	// First line: cpu  user nice system idle iowait irq softirq ...
+	fields := strings.Fields(lines[0])
+	if len(fields) < 5 || fields[0] != "cpu" {
+		return cpuStat{}
 	}
 
-	totalStr := strings.TrimSuffix(fields[1], "Gi")
-	usedStr := strings.TrimSuffix(fields[2], "Gi")
+	user, _ := strconv.ParseUint(fields[1], 10, 64)
+	system, _ := strconv.ParseUint(fields[3], 10, 64)
+	idle, _ := strconv.ParseUint(fields[4], 10, 64)
 
-	total, err1 := strconv.ParseFloat(totalStr, 64)
-	used, err2 := strconv.ParseFloat(usedStr, 64)
+	return cpuStat{
+		user:   user,
+		system: system,
+		idle:   idle,
+	}
+}
 
-	if err1 == nil && err2 == nil && total > 0 {
-		percent := (used / total) * 100
-		return fmt.Sprintf("%.1f%% (%s / %s)", percent, fields[2], fields[1])
+func calculateCPUUsage(prev, current cpuStat) float64 {
+	prevTotal := prev.user + prev.system + prev.idle
+	currentTotal := current.user + current.system + current.idle
+
+	if prevTotal == 0 || currentTotal == prevTotal {
+		return 0.0
 	}
 
-	return fmt.Sprintf("%s / %s", fields[2], fields[1])
+	totalDiff := currentTotal - prevTotal
+	idleDiff := current.idle - prev.idle
+	usedDiff := totalDiff - idleDiff
+
+	return float64(usedDiff) / float64(totalDiff)
+}
+
+func getMemoryUsage() float64 {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0.0
+	}
+
+	var memTotal, memAvailable uint64
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		value, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			continue
+		}
+
+		switch fields[0] {
+		case "MemTotal:":
+			memTotal = value
+		case "MemAvailable:":
+			memAvailable = value
+		}
+	}
+
+	if memTotal == 0 {
+		return 0.0
+	}
+
+	memUsed := memTotal - memAvailable
+	return float64(memUsed) / float64(memTotal)
 }

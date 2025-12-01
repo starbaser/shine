@@ -1,0 +1,66 @@
+# Shine Showcase Configuration
+# A beautiful TUI-based desktop shell for Hyprland
+# Theme: Srcery (srcery.sh)
+
+[core]
+# Prism discovery paths - binaries searched via PATH
+path = ["~/.local/bin"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Status Bar - Bottom edge, full width
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.bar]
+enabled = true
+path = "bar"
+origin = "bottom-center"
+width = "100%"
+height = 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clock Widget - Top right corner
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.clock]
+enabled = true
+path = "clock"
+origin = "top-right"
+width = 24
+height = 5
+position = "20,20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# System Monitor - Top left corner, shows CPU/RAM with progress bars
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.sysinfo]
+enabled = true
+path = "sysinfo"
+origin = "top-left"
+width = 30
+height = 8
+position = "20,20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App Launcher - Center popup, hidden by default
+# Toggle with keybind: shine prism fg launcher
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.launcher]
+enabled = true
+path = "launcher"
+origin = "center-sized"
+width = "600px"
+height = "400px"
+focus_policy = "on-demand"
+hide_on_focus_loss = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notifications - Right edge, Dunst integration
+# Shows notification history from dunstctl
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.notifications]
+enabled = true
+path = "notifications"
+origin = "right-center"
+width = 40
+height = 20
+position = "20,0"
+focus_policy = "on-demand"
+hide_on_focus_loss = true

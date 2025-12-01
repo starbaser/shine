@@ -20,6 +20,8 @@ prisms:
 	@go build -o bin/chat ./cmd/prisms/chat
 	@go build -o bin/bar ./cmd/prisms/bar
 	@go build -o bin/sysinfo ./cmd/prisms/sysinfo
+	@go build -o bin/launcher ./cmd/prisms/launcher
+	@go build -o bin/notifications ./cmd/prisms/notifications
 
 # Build test fixture prism
 test-prism:
@@ -43,7 +45,7 @@ test-all: test test-integration
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -f bin/prismctl bin/shine bin/shined
-	@rm -f bin/clock bin/chat bin/bar bin/sysinfo
+	@rm -f bin/clock bin/chat bin/bar bin/sysinfo bin/launcher bin/notifications
 	@rm -f test/fixtures/test-prism
 
 # Quick test - builds binaries and shows how to run
@@ -69,6 +71,8 @@ install: build
 	@cp bin/chat ~/.local/bin/
 	@cp bin/bar ~/.local/bin/
 	@cp bin/sysinfo ~/.local/bin/
+	@cp bin/launcher ~/.local/bin/
+	@cp bin/notifications ~/.local/bin/
 	@echo "Done! Make sure ~/.local/bin is in your PATH"
 
 # Help

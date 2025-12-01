@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/starbased-co/shine/cmd/prisms/internal/theme"
 )
 
 func main() {
@@ -36,30 +39,51 @@ type activeWorkspace struct {
 	Name string `json:"name"`
 }
 
+type activeWindow struct {
+	Class string `json:"class"`
+	Title string `json:"title"`
+}
+
+type batteryStatus struct {
+	percent  int
+	charging bool
+	exists   bool
+}
+
+type networkStatus struct {
+	connected bool
+}
+
 type tickMsg time.Time
 
 type model struct {
-	workspaces      []workspace
+	workspaces        []workspace
 	activeWorkspaceID int
-	currentTime     time.Time
-	width           int
-	err             error
+	activeWindow      activeWindow
+	battery           batteryStatus
+	network           networkStatus
+	currentTime       time.Time
+	width             int
+	err               error
 }
 
 func initialModel() model {
 	workspaces, activeID := getWorkspaces()
 	return model{
-		workspaces:      workspaces,
+		workspaces:        workspaces,
 		activeWorkspaceID: activeID,
-		currentTime:     time.Now(),
-		width:           80,
+		activeWindow:      getActiveWindow(),
+		battery:           getBatteryStatus(),
+		network:           getNetworkStatus(),
+		currentTime:       time.Now(),
+		width:             80,
 	}
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		tickCmd(),
-		refreshWorkspacesCmd(),
+		refreshStatusCmd(),
 	)
 }
 
@@ -69,17 +93,23 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-type workspacesMsg struct {
-	workspaces []workspace
-	activeID   int
+type statusUpdateMsg struct {
+	workspaces   []workspace
+	activeID     int
+	activeWindow activeWindow
+	battery      batteryStatus
+	network      networkStatus
 }
 
-func refreshWorkspacesCmd() tea.Cmd {
+func refreshStatusCmd() tea.Cmd {
 	return func() tea.Msg {
 		workspaces, activeID := getWorkspaces()
-		return workspacesMsg{
-			workspaces: workspaces,
-			activeID:   activeID,
+		return statusUpdateMsg{
+			workspaces:   workspaces,
+			activeID:     activeID,
+			activeWindow: getActiveWindow(),
+			battery:      getBatteryStatus(),
+			network:      getNetworkStatus(),
 		}
 	}
 }
@@ -100,12 +130,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentTime = time.Time(msg)
 		return m, tea.Batch(
 			tickCmd(),
-			refreshWorkspacesCmd(),
+			refreshStatusCmd(),
 		)
 
-	case workspacesMsg:
+	case statusUpdateMsg:
 		m.workspaces = msg.workspaces
 		m.activeWorkspaceID = msg.activeID
+		m.activeWindow = msg.activeWindow
+		m.battery = msg.battery
+		m.network = msg.network
 		return m, nil
 	}
 
@@ -113,25 +146,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// Styles with high contrast for visibility in thin panels
-	// Use bright colors on dark/transparent background
+	t := theme.Current()
+
+	// Workspace styles
 	activeStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("14")).  // Bright cyan
-		Background(lipgloss.Color("0")).    // Black background for contrast
+		Foreground(t.Accent()).
+		Background(t.Background()).
 		Bold(true).
 		Padding(0, 1)
 
 	inactiveStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).  // White
-		Background(lipgloss.Color("0")).    // Black background
+		Foreground(t.TextMuted()).
+		Background(t.Background()).
 		Padding(0, 1)
 
+	// Window title style
+	windowTitleStyle := lipgloss.NewStyle().
+		Foreground(t.TextSecondary()).
+		Background(t.Background()).
+		Padding(0, 1)
+
+	// Clock style
 	clockStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("13")).  // Bright magenta
-		Background(lipgloss.Color("0")).    // Black background
+		Foreground(t.Accent()).
+		Background(t.Background()).
 		Bold(true).
 		Padding(0, 1)
 
+	// Build workspaces section (left)
 	var workspaceStrs []string
 	for _, ws := range m.workspaces {
 		wsLabel := fmt.Sprintf("%d", ws.ID)
@@ -141,22 +183,68 @@ func (m model) View() string {
 			workspaceStrs = append(workspaceStrs, inactiveStyle.Render(wsLabel))
 		}
 	}
-
 	workspacesView := strings.Join(workspaceStrs, "")
-	clockView := clockStyle.Render(m.currentTime.Format("15:04:05"))
 
-	contentWidth := lipgloss.Width(workspacesView) + lipgloss.Width(clockView)
-	spacerWidth := m.width - contentWidth
-	if spacerWidth < 0 {
-		spacerWidth = 0
+	// Build center section (window title)
+	windowTitle := formatWindowTitle(m.activeWindow, m.width/3)
+	centerView := windowTitleStyle.Render(windowTitle)
+
+	// Build right section (network, battery, clock)
+	var rightParts []string
+
+	// Network indicator
+	if m.network.connected {
+		netStyle := lipgloss.NewStyle().
+			Foreground(t.Success()).
+			Background(t.Background()).
+			Padding(0, 1)
+		rightParts = append(rightParts, netStyle.Render(theme.IconWifi))
+	} else {
+		netStyle := lipgloss.NewStyle().
+			Foreground(t.Error()).
+			Background(t.Background()).
+			Padding(0, 1)
+		rightParts = append(rightParts, netStyle.Render(theme.IconWifiOff))
 	}
-	spacer := strings.Repeat(" ", spacerWidth)
+
+	// Battery indicator (only if exists)
+	if m.battery.exists {
+		batteryColor := getBatteryColor(t, m.battery.percent, m.battery.charging)
+		batteryIcon := theme.GetBatteryIcon(m.battery.percent, m.battery.charging)
+		batteryText := fmt.Sprintf("%s %d%%", batteryIcon, m.battery.percent)
+
+		batteryStyle := lipgloss.NewStyle().
+			Foreground(batteryColor).
+			Background(t.Background()).
+			Padding(0, 1)
+		rightParts = append(rightParts, batteryStyle.Render(batteryText))
+	}
+
+	// Clock
+	rightParts = append(rightParts, clockStyle.Render(m.currentTime.Format("15:04:05")))
+	rightView := strings.Join(rightParts, "")
+
+	// Calculate spacing
+	leftWidth := lipgloss.Width(workspacesView)
+	centerWidth := lipgloss.Width(centerView)
+	rightWidth := lipgloss.Width(rightView)
+
+	// Calculate padding to center the window title
+	availableSpace := m.width - leftWidth - centerWidth - rightWidth
+	if availableSpace < 0 {
+		availableSpace = 0
+	}
+
+	leftPadding := availableSpace / 2
+	rightPadding := availableSpace - leftPadding
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		workspacesView,
-		spacer,
-		clockView,
+		strings.Repeat(" ", leftPadding),
+		centerView,
+		strings.Repeat(" ", rightPadding),
+		rightView,
 	)
 }
 
@@ -190,4 +278,115 @@ func getWorkspaces() ([]workspace, int) {
 	}
 
 	return workspaces, active.ID
+}
+
+func getActiveWindow() activeWindow {
+	cmd := exec.Command("hyprctl", "activewindow", "-j")
+	output, err := cmd.Output()
+	if err != nil {
+		return activeWindow{}
+	}
+
+	var window activeWindow
+	if err := json.Unmarshal(output, &window); err != nil {
+		return activeWindow{}
+	}
+
+	return window
+}
+
+func formatWindowTitle(window activeWindow, maxWidth int) string {
+	if window.Title == "" && window.Class == "" {
+		return ""
+	}
+
+	var title string
+	if window.Class != "" && window.Title != "" {
+		title = fmt.Sprintf("%s - %s", window.Class, window.Title)
+	} else if window.Title != "" {
+		title = window.Title
+	} else {
+		title = window.Class
+	}
+
+	// Truncate if too long
+	if len(title) > maxWidth && maxWidth > 3 {
+		title = title[:maxWidth-3] + "..."
+	}
+
+	return title
+}
+
+func getBatteryStatus() batteryStatus {
+	// Check if battery exists
+	if _, err := os.Stat("/sys/class/power_supply/BAT0"); os.IsNotExist(err) {
+		return batteryStatus{exists: false}
+	}
+
+	// Read capacity
+	capacityData, err := os.ReadFile("/sys/class/power_supply/BAT0/capacity")
+	if err != nil {
+		return batteryStatus{exists: false}
+	}
+
+	percent, err := strconv.Atoi(strings.TrimSpace(string(capacityData)))
+	if err != nil {
+		return batteryStatus{exists: false}
+	}
+
+	// Read status
+	statusData, err := os.ReadFile("/sys/class/power_supply/BAT0/status")
+	if err != nil {
+		return batteryStatus{exists: false}
+	}
+
+	status := strings.TrimSpace(string(statusData))
+	charging := status == "Charging"
+
+	return batteryStatus{
+		percent:  percent,
+		charging: charging,
+		exists:   true,
+	}
+}
+
+func getBatteryColor(t theme.Theme, percent int, charging bool) lipgloss.TerminalColor {
+	if charging {
+		return t.Info()
+	}
+
+	switch {
+	case percent > 50:
+		return t.Success()
+	case percent >= 20:
+		return t.Warning()
+	default:
+		return t.Error()
+	}
+}
+
+func getNetworkStatus() networkStatus {
+	// Simple check: try nmcli first
+	cmd := exec.Command("nmcli", "-t", "-f", "STATE", "general")
+	output, err := cmd.Output()
+	if err == nil {
+		state := strings.TrimSpace(string(output))
+		return networkStatus{connected: state == "connected"}
+	}
+
+	// Fallback: check if any network interface is up (excluding loopback)
+	cmd = exec.Command("ip", "link", "show")
+	output, err = cmd.Output()
+	if err != nil {
+		return networkStatus{connected: false}
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "state UP") && !strings.Contains(line, "lo:") {
+			return networkStatus{connected: true}
+		}
+	}
+
+	return networkStatus{connected: false}
 }

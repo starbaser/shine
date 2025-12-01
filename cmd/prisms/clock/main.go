@@ -7,14 +7,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/starbased-co/shine/cmd/prisms/internal/theme"
 )
 
 func main() {
-	// Set window title using ANSI escape sequence
 	fmt.Print("\033]0;shine-clock\007")
 
-	// Use alt screen mode to take over the full terminal
-	// This prevents prismctl logs from interfering with the display
 	p := tea.NewProgram(
 		initialModel(),
 		tea.WithAltScreen(),
@@ -73,15 +71,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	t := theme.Current()
+
 	timeStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("13")). // Bright magenta
-		Background(lipgloss.Color("0")).  // Black background
+		Foreground(t.Accent()).
+		Background(t.Background()).
 		Bold(true).
 		Align(lipgloss.Center, lipgloss.Center).
 		Width(m.width).
 		Height(m.height)
 
-	timeStr := m.currentTime.Format("15:04:05")
+	dateStyle := lipgloss.NewStyle().
+		Foreground(t.TextSecondary()).
+		Align(lipgloss.Center).
+		Width(m.width)
 
-	return timeStyle.Render(timeStr)
+	timeStr := m.currentTime.Format("15:04")
+	dateStr := m.currentTime.Format("Mon, Jan 2")
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		timeStyle.Render(timeStr),
+		dateStyle.Render(dateStr),
+	)
+
+	panel := theme.GlassPanel().
+		Width(m.width).
+		Height(m.height).
+		Align(lipgloss.Center, lipgloss.Center)
+
+	return panel.Render(content)
 }
