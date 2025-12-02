@@ -1,0 +1,72 @@
+# Shine Demo Configuration
+# All panels target DP-2 monitor
+
+[core]
+path = ["/home/starbased/dev/projects/shine/demo/prisms", "/home/starbased/dev/projects/shine/bin"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Status Bar - Bottom edge, full width
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.bar]
+name = "bar"
+enabled = true
+path = "bar"
+origin = "bottom-center"
+width = 400
+height = 1
+output_name = "DP-2"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clock Widget - Top right corner
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.clock]
+name = "clock"
+enabled = true
+path = "clock"
+origin = "top-right"
+width = 24
+height = 5
+position = "20,20"
+output_name = "DP-2"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# System Monitor - Top left corner
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.sysinfo]
+name = "sysinfo"
+enabled = true
+path = "sysinfo"
+origin = "top-left"
+width = 30
+height = 8
+position = "20,20"
+output_name = "DP-2"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App Launcher - Center popup
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.launcher]
+name = "launcher"
+enabled = true
+path = "launcher"
+origin = "center-sized"
+width = "600px"
+height = "400px"
+focus_policy = "on-demand"
+hide_on_focus_loss = true
+output_name = "DP-2"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notifications - Right edge
+# ─────────────────────────────────────────────────────────────────────────────
+[prisms.notifications]
+name = "notifications"
+enabled = true
+path = "notifications"
+origin = "right-center"
+width = 40
+height = 20
+position = "20,0"
+focus_policy = "on-demand"
+hide_on_focus_loss = true
+output_name = "DP-2"

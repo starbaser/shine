@@ -1,0 +1,3 @@
+name = "bar"
+path = "bar"
+enabled = false
